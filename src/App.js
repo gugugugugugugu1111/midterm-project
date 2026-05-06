@@ -42,7 +42,9 @@ useEffect(() => {
     setUser(currentUser);
     if (currentUser) {
       const userRef = doc(db, "users", currentUser.uid);
-      
+      if (Notification.permission !== "granted") {
+        Notification.requestPermission();
+      }
       // 先檢查這份檔案是否已存在，避免每次登入都重寫
       const userSnap = await getDoc(userRef); // 記得頂部要 import getDoc
       
@@ -115,20 +117,46 @@ const updateInviteId = async () => {
   }, [user, currentRoom]);
 
   // 3. 監聽目前房間的訊息 (子集合模式)
-  useEffect(() => {
-    if (user && currentRoom) {
-      const q = query(
-        collection(db, "rooms", currentRoom.id, "messages"),
-        orderBy("createdAt", "asc")
-      );
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        setMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      });
-      return () => unsubscribe();
-    } else {
-      setMessages([]);
-    }
-  }, [user, currentRoom]);
+  // 3. 監聽目前房間的訊息並觸發通知
+useEffect(() => {
+  if (user && currentRoom) {
+    const q = query(
+      collection(db, "rooms", currentRoom.id, "messages"),
+      orderBy("createdAt", "asc")
+    );
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const newMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      // --- 新增：通知判斷邏輯 ---
+      // 取得最後一筆訊息
+      const lastMsg = newMessages[newMessages.length - 1];
+      
+      // 條件：1. 有訊息 2. 不是自己發的 3. 權限已開啟 
+      if (lastMsg && lastMsg.uid !== user.uid && Notification.permission === "granted") {
+        
+        // 為了避免重複通知舊訊息，檢查這則訊息是否是 10 秒內產生的
+        const msgTime = lastMsg.createdAt?.toMillis() || Date.now();
+        const now = Date.now();
+        
+        // 且只有在視窗被隱藏 (切換到別的分頁) 時才通知，才符合「未讀通知」的直覺
+        if (now - msgTime < 10000 && document.hidden) {
+          new Notification(`[#${currentRoom.name}] 新訊息`, {
+            body: `${lastMsg.email}: ${lastMsg.text}`,
+            icon: "https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" // 可換成你的 logo
+          });
+        }
+      }
+      // -----------------------
+
+      setMessages(newMessages);
+    });
+    
+    return () => unsubscribe();
+  } else {
+    setMessages([]);
+  }
+}, [user, currentRoom]);
 
   // 自動捲動到底部
   useEffect(() => {
