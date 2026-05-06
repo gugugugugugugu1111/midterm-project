@@ -23,8 +23,8 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [messages, setMessages] = useState([]); // 存放訊息列表
-  const [newMessage, setNewMessage] = useState(""); // 存放輸入框內容
+  const [messages, setMessages] = useState([]); 
+  const [newMessage, setNewMessage] = useState(""); 
 
   // 1. 監聽 Firebase 登入狀態
   useEffect(() => {
@@ -32,20 +32,28 @@ function App() {
       setUser(currentUser);
       setLoading(false);
     });
-    return () => unsubscribe();
+    return () => unsubscribe(); // 確保組件卸載時移除監聽
   }, []);
 
   // 2. 監聽 Firestore 訊息變動 (即時讀取)
   useEffect(() => {
+    // 只有在 user 存在時才啟動監聽
     if (user) {
       const q = query(collection(db, "messages"), orderBy("createdAt", "asc"));
+      
       const unsubscribe = onSnapshot(q, (snapshot) => {
-        setMessages(snapshot.docs.map(doc => ({
+        const fetchedMessages = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
-        })));
+        }));
+        setMessages(fetchedMessages);
+      }, (error) => {
+        console.error("Firestore Error:", error);
       });
-      return () => unsubscribe();
+
+      return () => unsubscribe(); // **關鍵**：切換使用者或登出時，一定要停止舊的監聽
+    } else {
+      setMessages([]); // 登出後清空訊息列表，防止視覺殘留
     }
   }, [user]);
 
@@ -61,24 +69,32 @@ function App() {
   };
 
   const handleLogout = () => {
-    signOut(auth).then(() => setUser(null));
+    signOut(auth).then(() => {
+      setUser(null);
+      setMessages([]); // 登出時清空
+    });
   };
 
   // 4. 傳送訊息邏輯
   const sendMessage = async (e) => {
     e.preventDefault();
-    if (newMessage.trim() === "") return;
+    const messageToSend = newMessage.trim();
+    if (messageToSend === "") return;
 
     try {
+      // 先清空輸入框，增加使用者體驗
+      setNewMessage(""); 
+      
       await addDoc(collection(db, "messages"), {
-        text: newMessage,
+        text: messageToSend,
         createdAt: serverTimestamp(),
         uid: user.uid,
         email: user.email,
       });
-      setNewMessage(""); // 發送完畢清空輸入框
     } catch (err) {
       alert("發送失敗：" + err.message);
+      // 如果發送失敗，可以把文字塞回去讓使用者重試
+      setNewMessage(messageToSend);
     }
   };
 
@@ -87,10 +103,9 @@ function App() {
   return (
     <div className="App">
       {user ? (
-        // --- 登入後的聊天室介面 ---
         <div className="chat-container">
           <header className="chat-header">
-            <h3>NTHU 聊天室</h3>
+            <h3>GuGuGaGa</h3>
             <div className="user-info">
               <span>{user.email}</span>
               <button className="btn-logout" onClick={handleLogout}>登出</button>
@@ -113,17 +128,17 @@ function App() {
           </main>
 
           <form className="chat-input-area" onSubmit={sendMessage}>
+            {/* **修正點**：必須加上 value={newMessage} 讓它成為受控組件 */}
             <input 
               type="text" 
               placeholder="輸入訊息..." 
-              value={newMessage}
+              value={newMessage} 
               onChange={(e) => setNewMessage(e.target.value)}
             />
             <button type="submit" className="btn-send">發送</button>
           </form>
         </div>
       ) : (
-        // --- 登入前的會員系統介面 ---
         <div className="auth-card">
           <h2>會員系統</h2>
           <div className="input-group">
