@@ -34,7 +34,8 @@ function App() {
   const [messages, setMessages] = useState([]); 
   const [newMessage, setNewMessage] = useState("");
   const messagesEndRef = useRef(null);
-
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [tempProfile, setTempProfile] = useState({}); // 用來存放編輯中的資料
   // 1. 監聽登入狀態
   // 在 useEffect 監聽登入狀態中修改
 useEffect(() => {
@@ -116,47 +117,47 @@ const updateInviteId = async () => {
     }
   }, [user, currentRoom]);
 
-  // 3. 監聽目前房間的訊息 (子集合模式)
-  // 3. 監聽目前房間的訊息並觸發通知
-useEffect(() => {
-  if (user && currentRoom) {
-    const q = query(
-      collection(db, "rooms", currentRoom.id, "messages"),
-      orderBy("createdAt", "asc")
-    );
-    
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const newMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  useEffect(() => {
+    if (user && currentRoom) {
+      let isInitialLoad = true; // 用來標記是否為「第一次載入歷史訊息」
+
+      const q = query(
+        collection(db, "rooms", currentRoom.id, "messages"),
+        orderBy("createdAt", "asc")
+      );
       
-      // --- 新增：通知判斷邏輯 ---
-      // 取得最後一筆訊息
-      const lastMsg = newMessages[newMessages.length - 1];
-      
-      // 條件：1. 有訊息 2. 不是自己發的 3. 權限已開啟 
-      if (lastMsg && lastMsg.uid !== user.uid && Notification.permission === "granted") {
-        
-        // 為了避免重複通知舊訊息，檢查這則訊息是否是 10 秒內產生的
-        const msgTime = lastMsg.createdAt?.toMillis() || Date.now();
-        const now = Date.now();
-        
-        // 且只有在視窗被隱藏 (切換到別的分頁) 時才通知，才符合「未讀通知」的直覺
-        if (now - msgTime < 10000 && document.hidden) {
-          new Notification(`[#${currentRoom.name}] 新訊息`, {
-            body: `${lastMsg.email}: ${lastMsg.text}`,
-            icon: "https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" // 可換成你的 logo
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        // 1. 先處理畫面上要顯示的所有訊息
+        const newMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setMessages(newMessages);
+
+        // 2. 處理通知邏輯：只有在「非第一次載入」且「頁面隱藏」時才觸發
+        if (!isInitialLoad) {
+          snapshot.docChanges().forEach((change) => {
+            // 只處理「新增加 (added)」的訊息
+            if (change.type === "added") {
+              const msgData = change.doc.data();
+              
+              // 條件：不是自己發的 + 權限允許 + 視窗隱藏 (document.hidden)
+              if (msgData.uid !== user.uid && Notification.permission === "granted" && document.hidden) {
+                new Notification(`[#${currentRoom.name}] 新訊息`, {
+                  body: `${msgData.email}: ${msgData.text}`,
+                  icon: "https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                });
+              }
+            }
           });
         }
-      }
-      // -----------------------
 
-      setMessages(newMessages);
-    });
-    
-    return () => unsubscribe();
-  } else {
-    setMessages([]);
-  }
-}, [user, currentRoom]);
+        // 第一次監聽完成後，將標記設為 false，之後進來的訊息都會觸發通知
+        isInitialLoad = false;
+      });
+      
+      return () => unsubscribe();
+    } else {
+      setMessages([]);
+    }
+  }, [user, currentRoom]);
 
   // 自動捲動到底部
   useEffect(() => {
