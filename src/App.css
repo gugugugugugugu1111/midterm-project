@@ -1,38 +1,187 @@
-.App {
+/* src/App.css */
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #0f172a; /* 深色科技感背景 */
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+/* 登入卡片 */
+.auth-card {
+  background: #ffffff;
+  padding: 40px;
+  border-radius: 20px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+  width: 380px;
   text-align: center;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+.auth-card h2 {
+  margin-top: 0;
+  color: #1e293b;
+  font-size: 28px;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+/* 輸入框組頭 */
+.input-group {
+  text-align: left;
+  margin-bottom: 20px;
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+.input-group label {
+  display: block; /* 讓標籤自佔一行 */
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 8px;
+}
+
+input {
+  width: 100%; /* 寬度填滿 */
+  padding: 12px;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 16px;
+  box-sizing: border-box; /* 極重要：防止寬度溢出 */
+}
+
+input:focus {
+  outline: none;
+  border-color: #38bdf8;
+}
+
+/* 按鈕樣式 */
+.btn-primary {
+  width: 100%;
+  padding: 14px;
+  background-color: #38bdf8;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-bottom: 10px;
+  transition: 0.3s;
+}
+
+.btn-primary:hover {
+  background-color: #0ea5e9;
+}
+
+/* 註冊按鈕用灰色區分 */
+.btn-secondary {
+  width: 100%;
+  padding: 10px;
+  background: none;
+  border: 1px solid #cbd5e1;
+  color: #64748b;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+/* Google 按鈕 */
+.btn-google {
+  width: 100%;
+  padding: 12px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: calc(10px + 2vmin);
+  gap: 10px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.divider {
+  margin: 20px 0;
+  color: #94a3b8;
+  font-size: 14px;
+  position: relative;
+}
+
+/* 全螢幕容器 */
+.chat-container {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #0f172a; /* 深色背景 */
   color: white;
 }
 
-.App-link {
-  color: #61dafb;
+/* 頂部標題列 */
+.chat-header {
+  padding: 1rem 2rem;
+  background-color: #1e293b;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #334155;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.chat-header h3 { margin: 0; color: #38bdf8; }
+
+/* 訊息顯示區 */
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* 訊息氣泡 */
+.msg-bubble {
+  max-width: 70%;
+  padding: 0.75rem 1rem;
+  border-radius: 1rem;
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
+.msg-bubble.sent {
+  align-self: flex-end;
+  background: #38bdf8;
+  color: white;
+}
+
+.msg-bubble.received {
+  align-self: flex-start;
+  background: #334155;
+  color: white;
+}
+
+/* 底部輸入區 */
+.chat-input-area {
+  padding: 1.5rem;
+  background-color: #1e293b;
+  display: flex;
+  gap: 1rem;
+  border-top: 1px solid #334155;
+}
+
+.chat-input-area input {
+  flex: 1;
+  background: #0f172a;
+  border: 1px solid #334155;
+  color: white;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+}
+
+.btn-send {
+  background: #38bdf8;
+  color: white;
+  border: none;
+  padding: 0 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: bold;
+  cursor: pointer;
 }
