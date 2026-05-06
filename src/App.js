@@ -74,6 +74,51 @@ useEffect(() => {
   }
 }, [user]);
 
+// 打開編輯視窗並帶入現有資料
+const openProfile = () => {
+  setTempProfile({
+    username: profile?.username || "",
+    phone: profile?.phone || "",
+    address: profile?.address || "",
+    photoURL: profile?.photoURL || "https://via.placeholder.com/100",
+    inviteId: profile?.inviteId || ""
+  });
+  setShowProfileModal(true);
+};
+
+// 儲存到 Firestore
+const saveProfile = async () => {
+  try {
+    const newId = tempProfile.inviteId;
+
+    // 如果 ID 有變動，才執行重複檢查
+    if (newId !== profile?.inviteId) {
+      if (!newId) return alert("ID 不能為空！");
+      
+      const q = query(collection(db, "users"), where("inviteId", "==", newId));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        alert("該 ID 已被使用，請更換一個。");
+        return;
+      }
+    }
+
+    // 執行更新
+    await updateDoc(doc(db, "users", user.uid), {
+      username: tempProfile.username,
+      phone: tempProfile.phone,
+      address: tempProfile.address,
+      photoURL: tempProfile.photoURL,
+      inviteId: newId, // 加入這一行
+    });
+
+    setShowProfileModal(false);
+    alert("個人檔案已更新！");
+  } catch (err) {
+    alert("儲存失敗：" + err.message);
+  }
+};
 // 修改邀請 ID 的功能
 const updateInviteId = async () => {
   const newId = prompt("設置你的專屬ID (不可重複)：", profile?.inviteId);
@@ -282,16 +327,19 @@ const inviteUserByInviteId = async () => {
   });
 
   const sendMessage = async (e) => {
-    e.preventDefault();
-    if (newMessage.trim() === "" || !currentRoom) return;
-    const text = newMessage;
-    setNewMessage("");
-    try {
+  e.preventDefault();
+  if (newMessage.trim() === "" || !currentRoom) return;
+  const text = newMessage;
+  setNewMessage("");
+  try {
       await addDoc(collection(db, "rooms", currentRoom.id, "messages"), {
         text: text,
         createdAt: serverTimestamp(),
         uid: user.uid,
         email: user.email,
+        // 加入這行：優先使用 profile 裡的名稱，沒有則用 email
+        username: profile?.username || user.email, 
+        photoURL: profile?.photoURL || "" // 也可以順便存頭像
       });
     } catch (err) { alert(err.message); }
   };
@@ -331,9 +379,12 @@ const inviteUserByInviteId = async () => {
                 ))}
               </div>
             <div className="sidebar-footer">
-              <div className="user-profile-small" onClick={updateInviteId} style={{ cursor: 'pointer' }}>
-                <div className="user-email">{user.email}</div>
-                <div className="invite-tag">ID: {profile?.inviteId || '未設定'} (點擊修改)</div>
+              <div className="user-profile-small" onClick={openProfile} style={{ cursor: 'pointer' }}>
+                <img src={profile?.photoURL || "https://via.placeholder.com/30"} alt="avatar" className="mini-avatar" />
+                <div className="user-info-text">
+                  <div className="user-name-display">{profile?.username || user.email}</div>
+                  <div className="invite-tag">ID: {profile?.inviteId}</div>
+                </div>
               </div>
               <button onClick={handleLogout} className="btn-mini">登出</button>
             </div>
@@ -355,9 +406,23 @@ const inviteUserByInviteId = async () => {
 
             <main className="chat-messages">
               {messages.map((msg) => (
-                <div key={msg.id} className={`msg-bubble ${msg.uid === user.uid ? 'sent' : 'received'}`}>
-                  <div className="msg-email">{msg.email}</div>
-                  <div className="msg-text">{msg.text}</div>
+                <div key={msg.id} className={`msg-wrapper ${msg.uid === user.uid ? 'sent' : 'received'}`}>
+                  {/* 只有接收到的訊息顯示左側頭像 */}
+                  {msg.uid !== user.uid && (
+                    <img src={msg.photoURL || "https://via.placeholder.com/30"} alt="avatar" className="chat-avatar" />
+                  )}
+                  
+                  <div className="msg-content">
+                    <div className="msg-username">{msg.username || msg.email}</div>
+                    <div className="msg-bubble">
+                      <div className="msg-text">{msg.text}</div>
+                    </div>
+                  </div>
+
+                  {/* 只有發送的訊息顯示右側頭像 (選配，若想跟截圖一致) */}
+                  {msg.uid === user.uid && (
+                    <img src={msg.photoURL || "https://via.placeholder.com/30"} alt="avatar" className="chat-avatar" />
+                  )}
                 </div>
               ))}
               <div ref={messagesEndRef} />
@@ -394,6 +459,41 @@ const inviteUserByInviteId = async () => {
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" alt="G" />
             使用 Google 登入
           </button>
+        </div>
+      )}
+      {showProfileModal && (
+        <div className="modal-overlay">
+          <div className="profile-modal">
+            <h2>編輯個人檔案</h2>
+            <div className="profile-fields">
+              {/* 新增專屬 ID 欄位 */}
+              <label>ID (用於邀請，不可重複)</label>
+              <input 
+                value={tempProfile.inviteId} 
+                onChange={e => setTempProfile({...tempProfile, inviteId: e.target.value})} 
+                placeholder="例如: lucky_cat_88"
+              />
+
+              <label>頭像網址 (Profile Picture URL)</label>
+              <input value={tempProfile.photoURL} onChange={e => setTempProfile({...tempProfile, photoURL: e.target.value})} />
+              
+              <label>使用者名稱 (Username)</label>
+              <input value={tempProfile.username} onChange={e => setTempProfile({...tempProfile, username: e.target.value})} />
+              
+              <label>Email (不可修改)</label>
+              <input value={user.email} disabled className="disabled-input" />
+              
+              <label>電話 (Phone Number)</label>
+              <input value={tempProfile.phone} onChange={e => setTempProfile({...tempProfile, phone: e.target.value})} />
+              
+              <label>地址 (Address)</label>
+              <textarea value={tempProfile.address} onChange={e => setTempProfile({...tempProfile, address: e.target.value})} />
+            </div>
+            <div className="modal-btns">
+              <button className="btn-cancel" onClick={() => setShowProfileModal(false)}>取消</button>
+              <button className="btn-save" onClick={saveProfile}>儲存變更</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -393,3 +393,86 @@ input:focus {
 .chat-messages {
   animation: fadeIn 0.5s ease-in-out;
 }
+
+.modal-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 1000;
+}
+.profile-modal {
+  background: #1e293b; padding: 30px; border-radius: 15px; width: 400px; color: white;
+}
+.profile-fields label { display: block; margin-top: 15px; font-size: 0.8rem; color: #94a3b8; }
+.profile-fields input, .profile-fields textarea {
+  width: 100%; background: #0f172a; border: 1px solid #334155; color: white; padding: 8px; border-radius: 5px; margin-top: 5px;
+}
+.modal-btns { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+.btn-save { background: #38bdf8; border: none; color: white; padding: 8px 20px; border-radius: 5px; cursor: pointer; }
+.mini-avatar { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; margin-right: 10px; }
+/* 每一則訊息的容器 */
+.msg-wrapper {
+  display: flex;
+  margin-bottom: 20px;
+  gap: 10px;
+  align-items: flex-end; /* 頭像對齊泡泡底部 */
+}
+
+.msg-wrapper.sent {
+  flex-direction: row; /* 若右邊也要頭像，改為 row */
+  justify-content: flex-end;
+}
+
+.msg-wrapper.received {
+  justify-content: flex-start;
+}
+
+/* 訊息內容區 (名稱 + 泡泡) */
+.msg-content {
+  display: flex;
+  flex-direction: column;
+  max-width: 60%;
+}
+
+.sent .msg-content {
+  align-items: flex-end; /* 自己發的名稱靠右 */
+}
+
+.received .msg-content {
+  align-items: flex-start; /* 別人發的名稱靠左 */
+}
+
+/* 使用者名稱樣式 */
+.msg-username {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+/* 訊息泡泡微調 */
+.msg-bubble {
+  padding: 10px 16px;
+  border-radius: 18px;
+  word-break: break-all;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.sent .msg-bubble {
+  background-color: #38bdf8;
+  color: white;
+  border-bottom-right-radius: 4px; /* 做出 Messenger 那種尖角感 */
+}
+
+.received .msg-bubble {
+  background-color: #334155;
+  color: white;
+  border-bottom-left-radius: 4px;
+}
+
+/* 聊天室頭像 */
+.chat-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  background-color: #1e293b;
+}
