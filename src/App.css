@@ -816,3 +816,29 @@ input:focus {
   100% { background-color: transparent; }
 }
 .highlight-flash { animation: flash-highlight 1.5s ease-in-out; }
+
+/* Emoji 彈出選單中的按鈕基礎樣式（確保有 Padding 和圓角） */
+.emoji-popover button {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.emoji-popover button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* 關鍵：已經發過（選中）的表情底色改變 */
+.emoji-popover button.active-reaction-btn {
+  background-color: #38bdf8; /* 你的主題藍色 */
+  /* 或者使用半透明色：background-color: rgba(56, 189, 248, 0.3); */
+}
+
+/* 如果選中了，滑鼠指上去可以稍微變深 */
+.emoji-popover button.active-reaction-btn:hover {
+  background-color: #0ea5e9;
+}

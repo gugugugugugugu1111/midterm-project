@@ -44,7 +44,7 @@ function App() {
   const [blockedUsers, setBlockedUsers] = useState([]); // 紀錄你封鎖的人的 UID
   const [profile, setProfile] = useState(null);
   const messageRefs = useRef({});
-
+  const [isMeBlockedByPeer, setIsMeBlockedByPeer] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -294,105 +294,125 @@ function App() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+// 在其他 useEffect 附近新增這個，用來偵測對方是否封鎖我
+
+  useEffect(() => {
+    if (user && currentRoom && currentRoom.members?.length === 2) {
+      // 找到對方的 UID
+      const otherId = currentRoom.members.find(m => m !== user.uid);
+      
+      // 監聽對方的個人資料，看他的 blockedUsers 是否包含我
+      const unsubscribe = onSnapshot(doc(db, "users", otherId), (docSnap) => {
+        if (docSnap.exists()) {
+          const peerBlockedList = docSnap.data().blockedUsers || [];
+          setIsMeBlockedByPeer(peerBlockedList.includes(user.uid));
+        }
+      });
+      return () => unsubscribe();
+    } else {
+      setIsMeBlockedByPeer(false);
+    }
+  }, [currentRoom, user]);
 
   // 建立新房間邏輯 (Invite 邏輯預備)
+  // 在 App.js 中找到 createNewRoom 函式，建議修改如下：
   const createNewRoom = async () => {
-  const roomName = prompt("請輸入聊天室名稱：");
-  if (!roomName) return;
+    const roomName = prompt("請輸入聊天室名稱：");
+    if (!roomName) return;
 
-  const firstMemberId = prompt("請輸入要邀請的成員 ID：");
-  if (firstMemberId === profile.inviteId) {
-  alert("你不能邀請你自己！");
-  return;
-}
-  if (!firstMemberId) {
-    alert("建立房間必須至少邀請一位成員！");
-    return;
-  }
+    const firstMemberId = prompt("請輸入要邀請的成員 ID：");
+    if (!firstMemberId || firstMemberId === profile.inviteId) {
+      return alert("ID 無效或不能邀請自己");
+    }
 
-  try {
-    // 1. 找尋該邀請 ID 對應的 UID
-    const q = query(collection(db, "users"), where("inviteId", "==", firstMemberId));
-    const querySnapshot = await getDocs(q);
+    try {
+      const q = query(collection(db, "users"), where("inviteId", "==", firstMemberId));
+      const querySnapshot = await getDocs(q);
 
-    if (querySnapshot.empty) {
-      alert("找不到該使用者，請確認邀請 ID 是否正確。");
+      if (querySnapshot.empty) return alert("找不到該使用者。");
+
+      const targetData = querySnapshot.docs[0].data();
+      const targetUid = targetData.uid;
+      const targetBlockedList = targetData.blockedUsers || []; 
+
+      // --- 關鍵雙向檢查 ---
+      // 1. 我封鎖了他
+      if (blockedUsers.includes(targetUid)) {
+        return alert("你已封鎖此使用者，無法建立聊天室。");
+      }
+      // 2. 他封鎖了我 (基於隱私，我們告知「找不到」或「無法建立」)
+      if (targetBlockedList.includes(user.uid)) {
+        return alert("找不到該使用者。"); 
+      }
+
+      await addDoc(collection(db, "rooms"), {
+        name: roomName,
+        members: [user.uid, targetUid],
+        creator: user.uid,
+        createdAt: serverTimestamp(),
+      });
+      alert("房間建立成功！");
+    } catch (err) { alert("建立失敗"); }
+  };
+
+  const deleteRoom = async (e, roomId, roomCreator) => {
+    e.stopPropagation(); // 防止觸發切換房間的點擊事件
+    
+    // 權限檢查：只有建立者能刪除
+    if (roomCreator !== user.uid) {
+      alert("只有房間建立者可以刪除房間！");
       return;
     }
 
-    const targetUid = querySnapshot.docs[0].data().uid;
+    if (!window.confirm("確定要刪除這個聊天室嗎？所有訊息將會消失。")) return;
 
-    // 2. 建立房間，成員包含自己與被邀請者
-    await addDoc(collection(db, "rooms"), {
-      name: roomName,
-      members: [user.uid, targetUid],
-      creator: user.uid, // 紀錄誰是建立者，方便之後判斷誰能刪除
-      createdAt: serverTimestamp(),
-    });
-    
-    alert(`房間「${roomName}」建立成功，已加入 ${firstMemberId}！`);
-  } catch (err) {
-    alert("建立失敗");
-  }
-};
-const deleteRoom = async (e, roomId, roomCreator) => {
-  e.stopPropagation(); // 防止觸發切換房間的點擊事件
-  
-  // 權限檢查：只有建立者能刪除
-  if (roomCreator !== user.uid) {
-    alert("只有房間建立者可以刪除房間！");
-    return;
-  }
-
-  if (!window.confirm("確定要刪除這個聊天室嗎？所有訊息將會消失。")) return;
-
-  try {
-    // 直接呼叫頂部 import 進來的 deleteDoc
-    await deleteDoc(doc(db, "rooms", roomId));
-    
-    // 如果刪除的是當前房間，重設選中狀態
-    if (currentRoom?.id === roomId) {
-      setCurrentRoom(null);
+    try {
+      // 直接呼叫頂部 import 進來的 deleteDoc
+      await deleteDoc(doc(db, "rooms", roomId));
+      
+      // 如果刪除的是當前房間，重設選中狀態
+      if (currentRoom?.id === roomId) {
+        setCurrentRoom(null);
+      }
+      alert("房間已刪除");
+    } catch (err) {
+      console.error("Delete Error:", err);
+      alert("刪除失敗" );
     }
-    alert("房間已刪除");
-  } catch (err) {
-    console.error("Delete Error:", err);
-    alert("刪除失敗" );
-  }
-};
+  };
   // 邀請成員邏輯
-const inviteUserByInviteId = async () => {
-  if (!currentRoom) return alert("請先選擇一個房間");
-  
-  const targetId = prompt("請輸入對方的邀請 ID：");
-  if (!targetId) return;
-  if (targetId === profile.inviteId) {
-    alert("你不能邀請你自己！");
-    return;
-  }
-  try {
-    // 1. 去 users 集合搜尋誰的 inviteId 等於輸入的值
-    const q = query(collection(db, "users"), where("inviteId", "==", targetId));
-    const querySnapshot = await getDocs(q);
-
-    if (querySnapshot.empty) {
-      return alert("找不到該使用者！");
-    }
-
-    // 2. 取得對方的真實 UID
-    const targetUid = querySnapshot.docs[0].data().uid;
-
-    // 3. 加入房間成員
-    const roomRef = doc(db, "rooms", currentRoom.id);
-    await updateDoc(roomRef, {
-      members: arrayUnion(targetUid)
-    });
+  const inviteUserByInviteId = async () => {
+    if (!currentRoom) return alert("請先選擇一個房間");
     
-    alert(`成功邀請 ${targetId} 進入房間！`);
-  } catch (err) {
-    alert("邀請失敗");
-  }
-};
+    const targetId = prompt("請輸入對方的邀請 ID：");
+    if (!targetId) return;
+    if (targetId === profile.inviteId) {
+      alert("你不能邀請你自己！");
+      return;
+    }
+    try {
+      // 1. 去 users 集合搜尋誰的 inviteId 等於輸入的值
+      const q = query(collection(db, "users"), where("inviteId", "==", targetId));
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        return alert("找不到該使用者！");
+      }
+
+      // 2. 取得對方的真實 UID
+      const targetUid = querySnapshot.docs[0].data().uid;
+
+      // 3. 加入房間成員
+      const roomRef = doc(db, "rooms", currentRoom.id);
+      await updateDoc(roomRef, {
+        members: arrayUnion(targetUid)
+      });
+      
+      alert(`成功邀請 ${targetId} 進入房間！`);
+    } catch (err) {
+      alert("邀請失敗");
+    }
+  };
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -418,7 +438,7 @@ const inviteUserByInviteId = async () => {
 
     try {
       await createUserWithEmailAndPassword(auth, email, password);
-      alert("註冊成功！。");
+      alert("註冊成功。");
     } catch (err) {
       if (err.code === 'auth/email-already-in-use') {
         alert("此 Email 已註冊過。");
@@ -439,7 +459,13 @@ const inviteUserByInviteId = async () => {
     
     const msgText = newMessage;
     const replyData = replyingTo; 
-    
+    const otherId = currentRoom.members?.find(m => m !== user.uid);
+  if (currentRoom.members?.length === 2) {
+    if (blockedUsers.includes(otherId) || isMeBlockedByPeer) {
+      alert("封鎖狀態下無法傳送訊息。");
+      return;
+    }
+  }
     setNewMessage("");
     setReplyingTo(null);
 
@@ -547,17 +573,31 @@ const inviteUserByInviteId = async () => {
 
             <main className="chat-messages">
               {/* 封鎖警告橫幅 (加分項要求的 UI) */}
-              {currentRoom?.members?.length === 2 && currentRoom.members.some(m => blockedUsers.includes(m)) && (
-                <div className="block-warning-banner">⚠️ 封鎖中：你們已無法互相傳送私人訊息。</div>
+              
+              {currentRoom?.members?.length === 2 && (blockedUsers.some(m => currentRoom.members.includes(m)) || isMeBlockedByPeer) && (
+                <div className="block-warning-banner">
+                  ⚠️ 封鎖中：你們已無法互相傳送私人訊息。
+                </div>
               )}
-
               {messages
                 .filter(msg => {
-                  const matchesSearch = msg.text.toLowerCase().includes(searchKeyword.toLowerCase());
-                  // 核心：互看隱藏邏輯 (我封鎖他 OR 他封鎖我)
-                  const iBlockHim = blockedUsers.includes(msg.uid);
-                  const heBlocksMe = msg.senderBlockedUsers?.includes(user.uid);
-                  return matchesSearch && !iBlockHim && !heBlocksMe;
+                    const matchesSearch = msg.text.toLowerCase().includes(searchKeyword.toLowerCase());
+  
+                    // 2. 我封鎖了他 (iBlockHim)
+                    // 不論新舊訊息，只要發話者在我的黑名單，我就看不見
+                    const iBlockHim = blockedUsers.includes(msg.uid);
+                    
+                    // 3. 他封鎖了我 (heBlocksMe)
+                    // A. 針對「新訊息」：檢查訊息內的快照
+                    const blockedBySnapshot = msg.senderBlockedUsers?.includes(user.uid);
+                    
+                    // B. 針對「舊訊息」與「即時狀態」：檢查 1對1 房間中對方的實時封鎖名單
+                    // 這裡利用你實作的 isMeBlockedByPeer 狀態，且只過濾別人的訊息
+                    const isPrivateRoom = currentRoom?.members?.length === 2;
+                    const blockedByLiveStatus = isPrivateRoom && isMeBlockedByPeer && msg.uid !== user.uid;
+
+                    // 結論：三者只要有一個成立，訊息就隱藏
+                    return matchesSearch && !iBlockHim && !blockedBySnapshot && !blockedByLiveStatus;
                 })
                 .map((msg) => (
                   <div 
@@ -569,7 +609,7 @@ const inviteUserByInviteId = async () => {
                       <img 
                         src={msg.photoURL || "/donlogo.jpeg"} 
                         className="chat-avatar" 
-                        onClick={() => toggleBlockUser(msg.uid, msg.username)}
+                        title={msg.username}
                       />
                     )}
                     
@@ -601,12 +641,25 @@ const inviteUserByInviteId = async () => {
 
                         <div className="msg-ops-outside">
                           {/* Emoji 快速選單 */}
+                          
                           <div className="emoji-trigger">
                             <span>❤️</span>
                             <div className="emoji-popover">
-                              {['❤️', '👍', '😂', '😮'].map(e => (
-                                <button key={e} onClick={() => handleReaction(msg.id, e)}>{e}</button>
-                              ))}
+                              {['❤️', '👍', '😂', '😮'].map(e => {
+                                // 判斷目前這個 emoji 是否已經被我點過了
+                                const isReactedByMe = msg.reactions?.some(r => r.uid === user.uid && r.emoji === e);
+                                
+                                return (
+                                  <button 
+                                    key={e} 
+                                    onClick={() => handleReaction(msg.id, e)}
+                                    /* 動態加入類別 */
+                                    className={isReactedByMe ? "active-reaction-btn" : ""}
+                                  >
+                                    {e}
+                                  </button>
+                                );
+                              })}
                             </div>
                           </div>
                           
@@ -616,6 +669,13 @@ const inviteUserByInviteId = async () => {
                               {!msg.image && <button onClick={() => editMessage(msg.id, msg.text)}>編輯</button>}
                               <button onClick={() => unsendMessage(msg.id)}>回收</button>
                             </>
+                          )}
+                          {msg.uid !== user.uid && (
+                            <button 
+                              onClick={() => toggleBlockUser(msg.uid, msg.username)}
+                              className="btn-block-text">
+                              封鎖
+                            </button>
                           )}
                         </div>
                       </div>
@@ -696,11 +756,7 @@ const inviteUserByInviteId = async () => {
                     style={{ border: 'none', background: 'transparent' }}
                   />
                 </div>
-                <small style={{ color: '#94a3b8' }}>或直接輸入網址：</small>
-                <input 
-                  value={tempProfile.photoURL} 
-                  onChange={e => setTempProfile({...tempProfile, photoURL: e.target.value})} 
-                />
+                
               
               <label>使用者名稱 (Username)</label>
               <input value={tempProfile.username} onChange={e => setTempProfile({...tempProfile, username: e.target.value})} />
