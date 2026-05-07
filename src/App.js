@@ -48,6 +48,8 @@ function App() {
   const [editRoomName, setEditRoomName] = useState("");
   const [roomMembersData, setRoomMembersData] = useState([]);
   const [blockedUsersData, setBlockedUsersData] = useState([]); 
+  const [isSignUpMode, setIsSignUpMode] = useState(false);
+  const isSigningUpRef = useRef(false);
 
   useEffect(() => {
     if (profile) {
@@ -57,6 +59,7 @@ function App() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (isSigningUpRef.current) return;
       setUser(currentUser);
       if (currentUser) {
         const userRef = doc(db, "users", currentUser.uid);
@@ -494,15 +497,25 @@ function App() {
   const handleSignUp = async () => {
     if (!email || !password) return alert("請輸入帳號密碼");
 
+    isSigningUpRef.current = true; 
+
     try {
       await createUserWithEmailAndPassword(auth, email, password);
-      alert("註冊成功。");
+      
+      await signOut(auth); 
+
+      alert("註冊成功！請使用新帳號登入。");
+      setIsSignUpMode(false); 
+      setPassword(''); 
+      
     } catch (err) {
       if (err.code === 'auth/email-already-in-use') {
         alert("此 Email 已註冊過。");
       } else {
-        alert("註冊失敗，密碼長度至少六個字元。" );
+        alert("註冊失敗，密碼長度至少六個字元。");
       }
+    } finally {
+      isSigningUpRef.current = false; 
     }
   };
 
@@ -635,26 +648,59 @@ function App() {
                 ))}
               </div>
             <div className="sidebar-footer">
-              <div className="user-profile-small" onClick={openProfile} style={{ cursor: 'pointer' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-                  <img src={profile?.photoURL || "/donlogo.jpeg"} alt="avatar" className="mini-avatar" />
-                  <span style={{ fontSize: '12px', color: '#38bdf8', opacity: 0.9 }}>
-                    (點擊修改個人檔案)
-                  </span>
+              <div 
+                className="user-profile-small" 
+                onClick={openProfile} 
+                style={{ 
+                  cursor: 'pointer', 
+                  backgroundColor: '#1e293b', 
+                  padding: '12px', 
+                  borderRadius: '10px',
+                  border: '1px solid #334155'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <img 
+                    src={profile?.photoURL || "/donlogo.jpeg"} 
+                    alt="avatar" 
+                    className="mini-avatar" 
+                    style={{ width: '42px', height: '42px', margin: 0, flexShrink: 0 }} 
+                  />
+                  
+                  <div className="user-info-text" style={{ flex: 1, overflow: 'hidden' }}>
+                    <div 
+                      className="user-name-display" 
+                      style={{ 
+                        fontSize: '1.1rem', color: 'white', fontWeight: 'bold', 
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' 
+                      }}
+                    >
+                      {profile?.username || user.email}
+                    </div>
+                    <div 
+                      className="invite-tag" 
+                      style={{ 
+                        color: '#94a3b8', fontSize: '0.85rem', marginTop: '2px',
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                      }}
+                    >
+                      ID: {profile?.inviteId}
+                    </div>
+                  </div>
                 </div>
                 
-                <div className="user-info-text">
-                  <div className="user-name-display" style={{ fontSize: '1.2rem', color: 'white', fontWeight: '500' }}>
-                    {profile?.username || user.email}
-                  </div>
-                  <div className="invite-tag" style={{ color: '#94a3b8', fontSize: '0.9rem', marginTop: '4px' }}>
-                    ID: {profile?.inviteId}
-                  </div>
+                <div style={{ fontSize: '12px', color: '#38bdf8', marginTop: '12px', textAlign: 'center', fontWeight: '500' }}>
+                  (點擊修改個人檔案)
                 </div>
-                
               </div>
               
-              <button onClick={handleLogout} className="btn-mini" style={{ marginTop: '10px' }}>登出</button>
+              <button 
+                onClick={handleLogout} 
+                className="btn-mini" 
+                style={{ marginTop: '10px', width: '100%', padding: '8px', fontSize: '0.9rem', fontWeight: 'bold' }}
+              >
+                登出
+              </button>
             </div>
           </aside>
 
@@ -819,22 +865,40 @@ function App() {
         </div>
       ) : (
          <div className="auth-card">
-          <h2>會員系統</h2>
-          <div className="input-group">
-            <label>Email 地址</label>
-            <input type="email" placeholder="example@email.com" onChange={(e) => setEmail(e.target.value)} />
-          </div>
-          <div className="input-group">
-            <label>密碼</label>
-            <input type="password" placeholder="請輸入密碼" onChange={(e) => setPassword(e.target.value)} />
-          </div>
-          <button className="btn-primary" onClick={handleSignIn}>登入系統</button>
-          <button className="btn-secondary" onClick={handleSignUp}>註冊新帳號</button>
-          <div className="divider">或者</div>
-          <button className="btn-google" onClick={() => signInWithPopup(auth, googleProvider)}>
-            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" alt="G" />
-            使用 Google 登入
-          </button>
+          {isSignUpMode ? (
+            <>
+              <h2>註冊新帳號</h2>
+              <div className="input-group">
+                <label>Email 地址</label>
+                <input type="email" placeholder="example@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+              </div>
+              <div className="input-group">
+                <label>設定密碼</label>
+                <input type="password" placeholder="請輸入至少 6 個字元" value={password} onChange={(e) => setPassword(e.target.value)} />
+              </div>
+              <button className="btn-primary" onClick={handleSignUp}>確認註冊</button>
+              <button className="btn-secondary" onClick={() => setIsSignUpMode(false)}>返回登入</button>
+            </>
+          ) : (
+            <>
+              <h2>會員系統</h2>
+              <div className="input-group">
+                <label>Email 地址</label>
+                <input type="email" placeholder="example@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+              </div>
+              <div className="input-group">
+                <label>密碼</label>
+                <input type="password" placeholder="請輸入密碼" value={password} onChange={(e) => setPassword(e.target.value)} />
+              </div>
+              <button className="btn-primary" onClick={handleSignIn}>登入系統</button>
+              <button className="btn-secondary" onClick={() => setIsSignUpMode(true)}>建立新帳號</button>
+              <div className="divider">或者</div>
+              <button className="btn-google" onClick={() => signInWithPopup(auth, googleProvider)}>
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" alt="G" />
+                使用 Google 登入
+              </button>
+            </>
+          )}
         </div>
       )}
       {showProfileModal && (
