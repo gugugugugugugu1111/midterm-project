@@ -40,161 +40,194 @@ function App() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [tempProfile, setTempProfile] = useState({}); // 用來存放編輯中的資料
   const [searchKeyword, setSearchKeyword] = useState("");
-  // 1. 監聽登入狀態
-  // 在 useEffect 監聽登入狀態中修改
-useEffect(() => {
-  const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-    setUser(currentUser);
-    if (currentUser) {
-      const userRef = doc(db, "users", currentUser.uid);
-      if (Notification.permission !== "granted") {
-        Notification.requestPermission();
-      }
-      // 先檢查這份檔案是否已存在，避免每次登入都重寫
-      const userSnap = await getDoc(userRef); // 記得頂部要 import getDoc
-      
-      if (!userSnap.exists()) {
-        const defaultUsername = currentUser.email.split('@')[0];
-        const defaultPhoto = "/donlogo.jpeg";
-        await setDoc(userRef, {
-          email: currentUser.email,
-          uid: currentUser.uid,
-          username: defaultUsername,
-          photoURL: defaultPhoto,
-          inviteId: `${currentUser.email.split('@')[0]}_${Math.floor(Math.random() * 10000)}` 
-        });
-      }
-    }
-    setLoading(false);
-  });
-  return () => unsubscribe();
-}, []);
-// 新增一個狀態來存儲個人檔案資料
-const [profile, setProfile] = useState(null);
+  const [replyingTo, setReplyingTo] = useState(null); // 紀錄正在回覆哪則訊息
+  const [blockedUsers, setBlockedUsers] = useState([]); // 紀錄你封鎖的人的 UID
+  const [profile, setProfile] = useState(null);
+  const messageRefs = useRef({});
 
-// 監聽自己的個人檔案
-useEffect(() => {
-  if (user) {
-    const unsubscribe = onSnapshot(doc(db, "users", user.uid), (doc) => {
-      setProfile(doc.data());
+
+  useEffect(() => {
+    if (profile) {
+      setBlockedUsers(profile.blockedUsers || []);
+    }
+  }, [profile]);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        const userRef = doc(db, "users", currentUser.uid);
+        if (Notification.permission !== "granted") {
+          Notification.requestPermission();
+        }
+        // 先檢查這份檔案是否已存在，避免每次登入都重寫
+        const userSnap = await getDoc(userRef); // 記得頂部要 import getDoc
+        
+        if (!userSnap.exists()) {
+          const defaultUsername = currentUser.email.split('@')[0];
+          const defaultPhoto = "/donlogo.jpeg";
+          await setDoc(userRef, {
+            email: currentUser.email,
+            uid: currentUser.uid,
+            username: defaultUsername,
+            photoURL: defaultPhoto,
+            inviteId: `${currentUser.email.split('@')[0]}_${Math.floor(Math.random() * 10000)}` 
+          });
+        }
+      }
+      setLoading(false);
     });
     return () => unsubscribe();
-  }
-}, [user]);
-
-// 打開編輯視窗並帶入現有資料
-const openProfile = () => {
-  setTempProfile({
-    username: profile?.username || "",
-    phone: profile?.phone || "",
-    address: profile?.address || "",
-    photoURL: profile?.photoURL || "https://via.placeholder.com/100",
-    inviteId: profile?.inviteId || ""
-  });
-  setShowProfileModal(true);
-};
-
-// 儲存到 Firestore
-const saveProfile = async () => {
-  try {
-    const newId = tempProfile.inviteId;
-
-    // 如果 ID 有變動，才執行重複檢查
-    if (newId !== profile?.inviteId) {
-      if (!newId) return alert("ID 不能為空！");
-      
-      const q = query(collection(db, "users"), where("inviteId", "==", newId));
-      const querySnapshot = await getDocs(q);
-
-      if (!querySnapshot.empty) {
-        alert("該 ID 已被使用，請更換一個。");
-        return;
-      }
+  }, []);
+  
+  const toggleBlockUser = async (targetUid, targetName) => {
+    if (targetUid === user.uid) return;
+    const isBlocked = blockedUsers.includes(targetUid);
+    
+    if (!isBlocked) {
+      if (!window.confirm(`封鎖 ${targetName} 後，你們將無法在私人聊天室對話，且群組訊息會互相隱藏。確定嗎？`)) return;
     }
 
-    // 執行更新
-    await updateDoc(doc(db, "users", user.uid), {
-      username: tempProfile.username,
-      phone: tempProfile.phone,
-      address: tempProfile.address,
-      photoURL: tempProfile.photoURL,
-      inviteId: newId, // 加入這一行
-    });
-
-    setShowProfileModal(false);
-    alert("個人檔案已更新！");
-  } catch (err) {
-    alert("儲存失敗" );
-  }
-};
-
-const handleImageUpload = (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  // 限制檔案大小 (Base64 會膨脹體積，建議限制在 200KB 以內)
-  if (file.size > 200 * 1024) {
-    alert("檔案太大，請上傳 200KB 以下的圖片以符合資料庫限制。");
-    return;
-  }
-
-  const reader = new FileReader();
-  reader.onloadend = () => {
-    // 這就是圖片的 Base64 字串
-    const base64String = reader.result;
-    setTempProfile({ ...tempProfile, photoURL: base64String });
-    alert("圖片處理完成！按下儲存即可更新。");
-  };
-  reader.readAsDataURL(file);
-};
-
-
-// A. 回收訊息 (Unsend)
-const unsendMessage = async (msgId) => {
-  if (!window.confirm("確定要回收這條訊息嗎？")) return;
-  try {
-    await deleteDoc(doc(db, "rooms", currentRoom.id, "messages", msgId));
-  } catch (err) { alert("回收失敗" ); }
-};
-
-// B. 編輯訊息 (Edit)
-const editMessage = async (msgId, oldText) => {
-  const newText = prompt("編輯訊息：", oldText);
-  if (!newText || newText === oldText) return;
-  try {
-    await updateDoc(doc(db, "rooms", currentRoom.id, "messages", msgId), {
-      text: newText,
-      isEdited: true 
-    });
-  } catch (err) { alert("編輯失敗" ); }
-};
-
-// C. 處理發送圖片 (Send Image)
-const handleSendImage = (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  
-  if (file.size > 200 * 1024) {
-    alert("圖片太大了，請上傳 200KB 以下的圖片。");
-    return;
-  }
-
-  const reader = new FileReader();
-  reader.onloadend = async () => {
     try {
-      await addDoc(collection(db, "rooms", currentRoom.id, "messages"), {
-        text: "", 
-        image: reader.result, // Base64 字串
-        createdAt: serverTimestamp(),
-        uid: user.uid,
-        email: user.email,
-        username: profile?.username || user.email,
-        photoURL: profile?.photoURL || ""
+      await updateDoc(doc(db, "users", user.uid), {
+        blockedUsers: isBlocked ? blockedUsers.filter(id => id !== targetUid) : arrayUnion(targetUid)
       });
-    } catch (err) { alert("圖片傳送失敗"); }
+    } catch (err) { alert("操作失敗"); }
   };
-  reader.readAsDataURL(file);
-};
+
+  const scrollToMessage = (msgId) => {
+    const targetElement = messageRefs.current[msgId];
+    if (targetElement) {
+      targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      targetElement.classList.add('highlight-flash'); // 加入 CSS 動畫
+      setTimeout(() => targetElement.classList.remove('highlight-flash'), 2000);
+    } else {
+      alert("找不到原始訊息（可能已被回收）");
+    }
+  };
+  // 監聽自己的個人檔案
+  useEffect(() => {
+    if (user) {
+      const unsubscribe = onSnapshot(doc(db, "users", user.uid), (doc) => {
+        setProfile(doc.data());
+      });
+      return () => unsubscribe();
+    }
+  }, [user]);
+
+// 打開編輯視窗並帶入現有資料
+  const openProfile = () => {
+    setTempProfile({
+      username: profile?.username || "",
+      phone: profile?.phone || "",
+      address: profile?.address || "",
+      photoURL: profile?.photoURL || "https://via.placeholder.com/100",
+      inviteId: profile?.inviteId || ""
+    });
+    setShowProfileModal(true);
+  };
+
+// 儲存到 Firestore
+  const saveProfile = async () => {
+    try {
+      const newId = tempProfile.inviteId;
+
+      // 如果 ID 有變動，才執行重複檢查
+      if (newId !== profile?.inviteId) {
+        if (!newId) return alert("ID 不能為空！");
+        
+        const q = query(collection(db, "users"), where("inviteId", "==", newId));
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+          alert("該 ID 已被使用，請更換一個。");
+          return;
+        }
+      }
+
+      // 執行更新
+      await updateDoc(doc(db, "users", user.uid), {
+        username: tempProfile.username,
+        phone: tempProfile.phone,
+        address: tempProfile.address,
+        photoURL: tempProfile.photoURL,
+        inviteId: newId, // 加入這一行
+      });
+
+      setShowProfileModal(false);
+      alert("個人檔案已更新！");
+    } catch (err) {
+      alert("儲存失敗" );
+    }
+  };
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // 限制檔案大小 (Base64 會膨脹體積，建議限制在 200KB 以內)
+    if (file.size > 200 * 1024) {
+      alert("檔案太大，請上傳 200KB 以下的圖片以符合資料庫限制。");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      // 這就是圖片的 Base64 字串
+      const base64String = reader.result;
+      setTempProfile({ ...tempProfile, photoURL: base64String });
+      alert("圖片處理完成！按下儲存即可更新。");
+    };
+    reader.readAsDataURL(file);
+  };
+
+
+  // A. 回收訊息 (Unsend)
+  const unsendMessage = async (msgId) => {
+    if (!window.confirm("確定要回收這條訊息嗎？")) return;
+    try {
+      await deleteDoc(doc(db, "rooms", currentRoom.id, "messages", msgId));
+    } catch (err) { alert("回收失敗" ); }
+  };
+
+  // B. 編輯訊息 (Edit)
+  const editMessage = async (msgId, oldText) => {
+    const newText = prompt("編輯訊息：", oldText);
+    if (!newText || newText === oldText) return;
+    try {
+      await updateDoc(doc(db, "rooms", currentRoom.id, "messages", msgId), {
+        text: newText,
+        isEdited: true 
+      });
+    } catch (err) { alert("編輯失敗" ); }
+  };
+
+  // C. 處理發送圖片 (Send Image)
+  const handleSendImage = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    if (file.size > 200 * 1024) {
+      alert("圖片太大了，請上傳 200KB 以下的圖片。");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      try {
+        await addDoc(collection(db, "rooms", currentRoom.id, "messages"), {
+          text: "", 
+          image: reader.result, // Base64 字串
+          createdAt: serverTimestamp(),
+          uid: user.uid,
+          email: user.email,
+          username: profile?.username || user.email,
+          photoURL: profile?.photoURL || ""
+        });
+      } catch (err) { alert("圖片傳送失敗"); }
+    };
+    reader.readAsDataURL(file);
+  };
 
   // 2. 監聽房間列表 (載入該使用者參與的房間)
   useEffect(() => {
@@ -401,23 +434,52 @@ const inviteUserByInviteId = async () => {
   });
 
   const sendMessage = async (e) => {
-  e.preventDefault();
-  if (newMessage.trim() === "" || !currentRoom) return;
-  const text = newMessage;
-  setNewMessage("");
-  try {
+    e.preventDefault();
+    if (newMessage.trim() === "" || !currentRoom) return;
+    
+    const msgText = newMessage;
+    const replyData = replyingTo; 
+    
+    setNewMessage("");
+    setReplyingTo(null);
+
+    try {
       await addDoc(collection(db, "rooms", currentRoom.id, "messages"), {
-        text: text,
+        text: msgText,
         createdAt: serverTimestamp(),
         uid: user.uid,
         email: user.email,
-        // 加入這行：優先使用 profile 裡的名稱，沒有則用 email
-        username: profile?.username || user.email, 
-        photoURL: profile?.photoURL || "" // 也可以順便存頭像
+        username: profile?.username || user.email,
+        photoURL: profile?.photoURL || "",
+        senderBlockedUsers: blockedUsers, 
+        replyTo: replyData ? {
+          id: replyData.id, 
+          text: replyData.text,
+          username: replyData.username
+        } : null,
+        reactions: [] // 預留 Emoji 反應空間
       });
     } catch (err) { alert(err.message); }
   };
 
+  const handleReaction = async (msgId, emoji) => {
+    const msgRef = doc(db, "rooms", currentRoom.id, "messages", msgId);
+    const msgSnap = await getDoc(msgRef);
+    const currentReactions = msgSnap.data().reactions || [];
+
+    // 檢查是否已經點過這個 emoji
+    const existingIndex = currentReactions.findIndex(r => r.uid === user.uid && r.emoji === emoji);
+
+    if (existingIndex > -1) {
+      // 如果點過了，就移除 (即「回收」功能)
+      currentReactions.splice(existingIndex, 1);
+    } else {
+      // 沒點過就加入
+      currentReactions.push({ uid: user.uid, emoji: emoji });
+    }
+
+    await updateDoc(msgRef, { reactions: currentReactions });
+  };
   if (loading) return <div className="loading-screen">載入中...</div>;
 
   return (
@@ -484,61 +546,96 @@ const inviteUserByInviteId = async () => {
             </header>
 
             <main className="chat-messages">
+              {/* 封鎖警告橫幅 (加分項要求的 UI) */}
+              {currentRoom?.members?.length === 2 && currentRoom.members.some(m => blockedUsers.includes(m)) && (
+                <div className="block-warning-banner">⚠️ 封鎖中：你們已無法互相傳送私人訊息。</div>
+              )}
+
               {messages
-                .filter(msg => msg.text.toLowerCase().includes(searchKeyword.toLowerCase()))
+                .filter(msg => {
+                  const matchesSearch = msg.text.toLowerCase().includes(searchKeyword.toLowerCase());
+                  // 核心：互看隱藏邏輯 (我封鎖他 OR 他封鎖我)
+                  const iBlockHim = blockedUsers.includes(msg.uid);
+                  const heBlocksMe = msg.senderBlockedUsers?.includes(user.uid);
+                  return matchesSearch && !iBlockHim && !heBlocksMe;
+                })
                 .map((msg) => (
-                  <div key={msg.id} className={`msg-wrapper ${msg.uid === user.uid ? 'sent' : 'received'}`}>
-                    
-                    {/* 別人的頭像 (左側) */}
+                  <div 
+                    key={msg.id} 
+                    ref={el => messageRefs.current[msg.id] = el} 
+                    className={`msg-wrapper ${msg.uid === user.uid ? 'sent' : 'received'}`}
+                  >
                     {msg.uid !== user.uid && (
-                      <img src={msg.photoURL || "/donlogo.jpeg"} alt="avatar" className="chat-avatar" />
+                      <img 
+                        src={msg.photoURL || "/donlogo.jpeg"} 
+                        className="chat-avatar" 
+                        onClick={() => toggleBlockUser(msg.uid, msg.username)}
+                      />
                     )}
                     
                     <div className="msg-content-wrapper">
                       <div className="msg-username">{msg.username || msg.email}</div>
                       
+                      {msg.replyTo && (
+                        <div className="reply-quote" onClick={() => scrollToMessage(msg.replyTo.id)}>
+                          <small>@{msg.replyTo.username}: {msg.replyTo.text.substring(0, 20)}</small>
+                        </div>
+                      )}
+
                       <div className="msg-bubble-row">
-                        {/* 訊息氣泡 */}
-                        {/* 判斷：如果有圖片，就不套用 msg-bubble 樣式 */}
                         <div className={msg.image ? "msg-image-only" : `msg-bubble ${msg.uid === user.uid ? 'sent' : 'received'}`}>
+                          {msg.image && <img src={msg.image} className="sent-image-standalone" />}
+                          {msg.text && <div className="msg-text">{msg.text}</div>}
                           
-                          {/* 顯示圖片：獨立於氣泡外 */}
-                          {msg.image && (
-                            <img 
-                              src={msg.image} 
-                              alt="sent" 
-                              className="sent-image-standalone" 
-                              onClick={() => window.open(msg.image, '_blank')} // 點擊可放大看原圖
-                            />
-                          )}
-                          
-                          {/* 顯示文字：只有在有文字且沒圖片時才顯示 (或視需求兩者並存) */}
-                          {msg.text && (
-                            <div className="msg-text">
-                              {msg.text} {msg.isEdited && <small style={{ opacity: 0.5 }}>(已編輯)</small>}
+                          {/* Emoji 反應顯示 (符合截圖：顯示多人、可回收) */}
+                          {msg.reactions && msg.reactions.length > 0 && (
+                            <div className="reactions-pill">
+                              {msg.reactions.map((r, i) => (
+                                <span key={i} onClick={() => r.uid === user.uid && handleReaction(msg.id, r.emoji)}>
+                                  {r.emoji}
+                                </span>
+                              ))}
                             </div>
                           )}
                         </div>
 
-                        {msg.uid === user.uid && (
-                          <div className="msg-ops-outside">
-                            {!msg.image && (
-                              <button onClick={() => editMessage(msg.id, msg.text)}>編輯</button>
-                            )}
-                            <button onClick={() => unsendMessage(msg.id)}>回收</button>
+                        <div className="msg-ops-outside">
+                          {/* Emoji 快速選單 */}
+                          <div className="emoji-trigger">
+                            <span>❤️</span>
+                            <div className="emoji-popover">
+                              {['❤️', '👍', '😂', '😮'].map(e => (
+                                <button key={e} onClick={() => handleReaction(msg.id, e)}>{e}</button>
+                              ))}
+                            </div>
                           </div>
-                        )}
+                          
+                          <button onClick={() => setReplyingTo(msg)}>回覆</button>
+                          {msg.uid === user.uid && (
+                            <>
+                              {!msg.image && <button onClick={() => editMessage(msg.id, msg.text)}>編輯</button>}
+                              <button onClick={() => unsendMessage(msg.id)}>回收</button>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
-
-                    {/* 自己的頭像 (右側) */}
-                    {msg.uid === user.uid && (
-                      <img src={profile?.photoURL || "/donlogo.jpeg"} alt="avatar" className="chat-avatar" />
-                    )}
+                    {msg.uid === user.uid && <img src={profile?.photoURL || "/donlogo.jpeg"} className="chat-avatar" />}
                   </div>
                 ))}
               <div ref={messagesEndRef} />
             </main>
+            {replyingTo && (
+              <div className="reply-preview-bar">
+                <div className="reply-info">
+                  <small>正在回覆 @{replyingTo.username}</small>
+                  <div>{replyingTo.text}</div>
+                </div>
+                <button onClick={() => setReplyingTo(null)}>✕</button>
+              </div>
+            )}
+
+            
             <form className="chat-input-area" onSubmit={sendMessage}>
               {/* 隱藏的檔案選取器 */}
               <input 
@@ -548,7 +645,7 @@ const inviteUserByInviteId = async () => {
                 onChange={handleSendImage} 
                 style={{ display: 'none' }} 
               />
-              <label htmlFor="image-upload" className="btn-image-label">📷</label>
+              <label htmlFor="image-upload" className="btn-image-label">+</label>
               
               <input 
                 type="text" 

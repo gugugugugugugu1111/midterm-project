@@ -621,6 +621,7 @@ input:focus {
   box-shadow: none !important;
   /* 確保圖片容器不會撐破佈局 */
   max-width: 300px; 
+  position: relative;
 }
 
 .sent-image-standalone {
@@ -672,3 +673,146 @@ input:focus {
   opacity: 1;
   visibility: visible;
 }
+/* 回覆引用塊 */
+.reply-quote {
+  background: rgba(0, 0, 0, 0.1);
+  border-left: 3px solid #38bdf8;
+  padding: 4px 8px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+/* 輸入框上方的回覆預覽條 */
+.reply-bar {
+  background: #334155;
+  padding: 8px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  border-bottom: 1px solid #38bdf8;
+}
+
+.reply-bar button {
+  background: none; border: none; color: white; cursor: pointer;
+}
+
+/* Emoji (這裡可以用系統內建的，或簡單在 input 旁加個按鈕) */
+.emoji-btn {
+  font-size: 20px;
+  cursor: pointer;
+  background: none;
+  border: none;
+}
+
+/* 回覆引用樣式 */
+.reply-quote {
+  background: rgba(255, 255, 255, 0.1);
+  border-left: 3px solid #38bdf8;
+  padding: 5px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  border-radius: 4px;
+  margin-bottom: 2px;
+}
+
+/* 高亮動畫 (符合 image_169297 要求) */
+@keyframes flash {
+  0% { background-color: rgba(56, 189, 248, 0.5); }
+  100% { background-color: transparent; }
+}
+.highlight-flash {
+  animation: flash 2s ease-out;
+}
+
+/* 回覆預覽條 */
+.reply-preview-bar {
+  background: #1e293b;
+  border-top: 2px solid #38bdf8;
+  padding: 10px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Emoji 列 */
+.emoji-row {
+  padding: 5px 20px;
+  background: #1e293b;
+  display: flex;
+  gap: 15px;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+/* Emoji 反應顯示在氣泡下方 */
+.reactions-display {
+  display: flex;
+  gap: 3px;
+  background: rgba(15, 23, 42, 0.6);
+  padding: 2px 6px;
+  border-radius: 10px;
+  position: absolute;
+  bottom: -15px;
+  right: 10px;
+  font-size: 12px;
+}
+
+/* Emoji 選單：平常隱藏，Hover 操作區才出現 */
+.emoji-dropdown {
+  position: relative;
+}
+.emoji-menu {
+  display: none;
+  position: absolute;
+  bottom: 100%;
+  background: #1e293b;
+  border: 1px solid #38bdf8;
+  border-radius: 20px;
+  padding: 5px 10px;
+  white-space: nowrap;
+  z-index: 10;
+}
+.emoji-dropdown:hover .emoji-menu {
+  display: flex;
+  gap: 8px;
+}
+
+/* 回覆高亮閃爍動畫 */
+@keyframes flash-highlight {
+  0% { transform: scale(1); background-color: rgba(56, 189, 248, 0.4); }
+  50% { transform: scale(1.02); background-color: rgba(56, 189, 248, 0.2); }
+  100% { transform: scale(1); background-color: transparent; }
+}
+.highlight-flash {
+  animation: flash-highlight 1s ease-in-out 2;
+  border-radius: 8px;
+}
+/* 封鎖警告 */
+.block-warning-banner {
+  background: #7f1d1d; color: #fca5a5; padding: 10px; text-align: center; font-weight: bold;
+}
+
+/* Emoji 反應膠囊 */
+.reactions-pill {
+  display: flex; gap: 4px; background: rgba(0,0,0,0.3); 
+  padding: 2px 8px; border-radius: 12px; font-size: 12px;
+  position: absolute; bottom: -12px; right: 5px; cursor: pointer;
+}
+
+/* Emoji 彈出選單 */
+.emoji-trigger { position: relative; cursor: pointer; }
+.emoji-popover {
+  display: none; position: absolute; bottom: 100%; left: 0;
+  background: #1e293b; border: 1px solid #38bdf8; border-radius: 20px; padding: 5px; z-index: 10;
+}
+.emoji-trigger:hover .emoji-popover { display: flex; gap: 5px; }
+.emoji-popover button { background: none; border: none; font-size: 16px; cursor: pointer; }
+
+/* 回覆高亮動畫 */
+@keyframes flash-highlight {
+  0% { background-color: rgba(56, 189, 248, 0.5); }
+  100% { background-color: transparent; }
+}
+.highlight-flash { animation: flash-highlight 1.5s ease-in-out; }
