@@ -476,3 +476,199 @@ input:focus {
   object-fit: cover;
   background-color: #1e293b;
 }
+
+/* 預設隱藏操作按鈕，並加入透明度過渡動畫讓它看起來更滑順 */
+.msg-ops {
+  display: flex;
+  gap: 10px;
+  font-size: 10px;
+  margin-top: 5px;
+  cursor: pointer;
+  justify-content: flex-end;
+  
+  /* 初始狀態：完全透明且不可見 */
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease-in-out, visibility 0.2s;
+}
+
+/* 當滑鼠移入訊息內容區 (msg-content) 時，顯示操作按鈕 */
+.msg-wrapper.sent:hover .msg-ops {
+  opacity: 0.7;
+  visibility: visible;
+}
+
+/* 滑鼠直接指到按鈕上時加亮 */
+.msg-ops span:hover {
+  text-decoration: underline;
+  opacity: 1;
+  color: #f8fafc;
+}
+.sent-image {
+  max-width: 100%; border-radius: 10px; margin-bottom: 5px;
+}
+.btn-image-label {
+  font-size: 20px; cursor: pointer; padding: 0 10px;
+}
+
+/* 聊天室標頭：確保它是彈性佈局 */
+.chat-header div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0 10px;
+  box-sizing: border-box;
+}
+
+/* 1. 左側聊天室名稱：防止被擠壓變形 */
+.chat-header h3 {
+  margin: 0;
+  color: white;
+  white-space: nowrap; /* 強制不換行 */
+  flex-shrink: 0;      /* 防止被搜尋框擠小 */
+}
+
+/* 2. 搜尋框：灰底且填滿中間 */
+.search-input {
+  flex: 1;                /* 自動填滿中間所有剩餘空間 */
+  margin: 0 30px;         /* 關鍵：給左右預留固定間距，確保不擠開名稱和按鈕 */
+  max-width: 500px;       /* 限制最大寬度，避免在大螢幕太長 */
+  
+  background-color: #334155 !important; /* 灰底 (Slate 700) */
+  color: #f8fafc !important;
+  border: 1px solid #475569 !important;
+  padding: 8px 15px;
+  border-radius: 8px;
+  outline: none;
+}
+
+.search-input::placeholder {
+  color: #94a3b8;
+}
+
+/* 3. 邀請按鈕：固定大小 */
+.chat-header .btn-mini {
+  flex-shrink: 0;         /* 防止被搜尋框擠小 */
+  background-color: #10b981; /* 綠色 */
+  padding: 8px 15px;
+  white-space: nowrap;
+}
+/* 訊息內容的最外層包裹 */
+.msg-content-wrapper {
+  display: flex;
+  flex-direction: column;
+  max-width: 70%;
+}
+
+/* 氣泡與按鈕所在的橫列 */
+.msg-bubble-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 關鍵：發送者訊息時，讓按鈕排在氣泡左邊 */
+.sent .msg-bubble-row {
+  flex-direction: row-reverse;
+}
+
+/* 氣泡外的操作按鈕樣式 */
+.msg-ops-outside {
+  display: flex;
+  gap: 4px;
+  opacity: 0;           /* 預設隱藏 */
+  visibility: hidden;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+/* 當滑鼠移到訊息包裝 (msg-wrapper) 上時才顯示 */
+.msg-wrapper:hover .msg-ops-outside {
+  opacity: 1;
+  visibility: visible;
+}
+
+.msg-ops-outside button {
+  background: #334155;
+  border: none;
+  color: white;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+
+.msg-ops-outside button:hover {
+  background: #475569;
+  transform: scale(1.1);
+}
+
+/* 修正名稱對齊：發送者名稱靠右 */
+.sent .msg-content-wrapper {
+  align-items: flex-end;
+}
+
+/* --- 圖片訊息優化 --- */
+.msg-image-only {
+  background: transparent !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  /* 確保圖片容器不會撐破佈局 */
+  max-width: 300px; 
+}
+
+.sent-image-standalone {
+  width: 100%;           /* 寬度填滿容器 (300px) */
+  max-height: 300px;     /* 限制高度，避免長圖霸佔全螢幕 */
+  border-radius: 12px;
+  object-fit: contain;   /* 完整顯示圖片內容，不裁切 */
+  background-color: #1e293b; /* 圖片載入前的底色 */
+  cursor: pointer;
+  border: 1px solid #334155;
+  transition: transform 0.2s;
+  display: block;        /* 移除底部的空白間隙 */
+}
+
+.sent-image-standalone:hover {
+  transform: scale(1.02);
+}
+
+/* --- 編輯與回收按鈕橫向化 --- */
+.msg-ops-outside {
+  display: flex;
+  flex-direction: row;   /* 強制橫向排列 */
+  gap: 10px;             /* 字與字之間的距離 */
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  flex-shrink: 0;        /* 防止按鈕被縮小 */
+  margin: 0 10px;        /* 與氣泡保持一點距離 */
+}
+
+.msg-ops-outside button {
+  background: none;      /* 去掉圓形背景 */
+  border: none;
+  color: #94a3b8;        /* 使用較淡的灰色 */
+  font-size: 12px;       /* 字體小一點比較精緻 */
+  cursor: pointer;
+  padding: 0;
+  white-space: nowrap;   /* 防止字體斷行 */
+}
+
+.msg-ops-outside button:hover {
+  color: #f8fafc;
+  text-decoration: underline; /* 移上去有底線感 */
+  transform: none;            /* 移除縮放效果 */
+}
+
+/* 確保滑鼠移入時顯示 */
+.msg-wrapper:hover .msg-ops-outside {
+  opacity: 1;
+  visibility: visible;
+}

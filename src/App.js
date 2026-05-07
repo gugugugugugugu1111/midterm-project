@@ -39,6 +39,7 @@ function App() {
   const messagesEndRef = useRef(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [tempProfile, setTempProfile] = useState({}); // 用來存放編輯中的資料
+  const [searchKeyword, setSearchKeyword] = useState("");
   // 1. 監聽登入狀態
   // 在 useEffect 監聽登入狀態中修改
 useEffect(() => {
@@ -123,16 +124,17 @@ const saveProfile = async () => {
     setShowProfileModal(false);
     alert("個人檔案已更新！");
   } catch (err) {
-    alert("儲存失敗：" + err.message);
+    alert("儲存失敗" );
   }
 };
+
 const handleImageUpload = (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
   // 限制檔案大小 (Base64 會膨脹體積，建議限制在 200KB 以內)
   if (file.size > 200 * 1024) {
-    alert("檔案太大了！請上傳 200KB 以下的圖片以符合資料庫限制。");
+    alert("檔案太大，請上傳 200KB 以下的圖片以符合資料庫限制。");
     return;
   }
 
@@ -146,6 +148,53 @@ const handleImageUpload = (e) => {
   reader.readAsDataURL(file);
 };
 
+
+// A. 回收訊息 (Unsend)
+const unsendMessage = async (msgId) => {
+  if (!window.confirm("確定要回收這條訊息嗎？")) return;
+  try {
+    await deleteDoc(doc(db, "rooms", currentRoom.id, "messages", msgId));
+  } catch (err) { alert("回收失敗" ); }
+};
+
+// B. 編輯訊息 (Edit)
+const editMessage = async (msgId, oldText) => {
+  const newText = prompt("編輯訊息：", oldText);
+  if (!newText || newText === oldText) return;
+  try {
+    await updateDoc(doc(db, "rooms", currentRoom.id, "messages", msgId), {
+      text: newText,
+      isEdited: true 
+    });
+  } catch (err) { alert("編輯失敗" ); }
+};
+
+// C. 處理發送圖片 (Send Image)
+const handleSendImage = (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  if (file.size > 200 * 1024) {
+    alert("圖片太大了，請上傳 200KB 以下的圖片。");
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onloadend = async () => {
+    try {
+      await addDoc(collection(db, "rooms", currentRoom.id, "messages"), {
+        text: "", 
+        image: reader.result, // Base64 字串
+        createdAt: serverTimestamp(),
+        uid: user.uid,
+        email: user.email,
+        username: profile?.username || user.email,
+        photoURL: profile?.photoURL || ""
+      });
+    } catch (err) { alert("圖片傳送失敗"); }
+  };
+  reader.readAsDataURL(file);
+};
 
   // 2. 監聽房間列表 (載入該使用者參與的房間)
   useEffect(() => {
@@ -250,7 +299,7 @@ const handleImageUpload = (e) => {
     
     alert(`房間「${roomName}」建立成功，已加入 ${firstMemberId}！`);
   } catch (err) {
-    alert("建立失敗：" + err.message);
+    alert("建立失敗");
   }
 };
 const deleteRoom = async (e, roomId, roomCreator) => {
@@ -275,7 +324,7 @@ const deleteRoom = async (e, roomId, roomCreator) => {
     alert("房間已刪除");
   } catch (err) {
     console.error("Delete Error:", err);
-    alert("刪除失敗：" + err.message);
+    alert("刪除失敗" );
   }
 };
   // 邀請成員邏輯
@@ -308,7 +357,7 @@ const inviteUserByInviteId = async () => {
     
     alert(`成功邀請 ${targetId} 進入房間！`);
   } catch (err) {
-    alert("邀請失敗：" + err.message);
+    alert("邀請失敗");
   }
 };
 
@@ -418,47 +467,89 @@ const inviteUserByInviteId = async () => {
           {/* 右側訊息區域 */}
           <div className="chat-container">
             <header className="chat-header">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', width: '100%' }}>
                 <h3>{currentRoom ? `# ${currentRoom.name}` : "請選擇房間"}</h3>
-                
+                {/* 搜尋框 */}
+                <input 
+                  type="text" 
+                  placeholder="搜尋訊息..." 
+                  value={searchKeyword}
+                  onChange={(e) => setSearchKeyword(e.target.value)}
+                  className="search-input"
+                />
                 {currentRoom && (
-                  <button onClick={inviteUserByInviteId} className="btn-mini" style={{ backgroundColor: '#10b981' }}>
-                    + 邀請成員
-                  </button>
+                  <button onClick={inviteUserByInviteId} className="btn-mini">+ 邀請</button>
                 )}
               </div>
             </header>
 
             <main className="chat-messages">
-              {messages.map((msg) => (
-                <div key={msg.id} className={`msg-wrapper ${msg.uid === user.uid ? 'sent' : 'received'}`}>
-                  
-                  {/* 接收到的訊息：目前仍使用發送當時存的圖片 */}
-                  {msg.uid !== user.uid && (
-                    <img src={msg.photoURL || "https://via.placeholder.com/30"} alt="avatar" className="chat-avatar" />
-                  )}
-                  
-                  <div className="msg-content">
-                    <div className="msg-username">{msg.username || msg.email}</div>
-                    <div className="msg-bubble">
-                      <div className="msg-text">{msg.text}</div>
-                    </div>
-                  </div>
+              {messages
+                .filter(msg => msg.text.toLowerCase().includes(searchKeyword.toLowerCase()))
+                .map((msg) => (
+                  <div key={msg.id} className={`msg-wrapper ${msg.uid === user.uid ? 'sent' : 'received'}`}>
+                    
+                    {/* 別人的頭像 (左側) */}
+                    {msg.uid !== user.uid && (
+                      <img src={msg.photoURL || "/donlogo.jpeg"} alt="avatar" className="chat-avatar" />
+                    )}
+                    
+                    <div className="msg-content-wrapper">
+                      <div className="msg-username">{msg.username || msg.email}</div>
+                      
+                      <div className="msg-bubble-row">
+                        {/* 訊息氣泡 */}
+                        {/* 判斷：如果有圖片，就不套用 msg-bubble 樣式 */}
+                        <div className={msg.image ? "msg-image-only" : `msg-bubble ${msg.uid === user.uid ? 'sent' : 'received'}`}>
+                          
+                          {/* 顯示圖片：獨立於氣泡外 */}
+                          {msg.image && (
+                            <img 
+                              src={msg.image} 
+                              alt="sent" 
+                              className="sent-image-standalone" 
+                              onClick={() => window.open(msg.image, '_blank')} // 點擊可放大看原圖
+                            />
+                          )}
+                          
+                          {/* 顯示文字：只有在有文字且沒圖片時才顯示 (或視需求兩者並存) */}
+                          {msg.text && (
+                            <div className="msg-text">
+                              {msg.text} {msg.isEdited && <small style={{ opacity: 0.5 }}>(已編輯)</small>}
+                            </div>
+                          )}
+                        </div>
 
-                  {/* 發送的訊息（你自己）：強制使用目前最新的 profile 圖片，而不是舊訊息裡的 */}
-                  {msg.uid === user.uid && (
-                    <img 
-                      src={profile?.photoURL || "/donlogo.jpeg"} 
-                      alt="avatar" 
-                      className="chat-avatar" 
-                    />
-                  )}
-                </div>
-              ))}
+                        {msg.uid === user.uid && (
+                          <div className="msg-ops-outside">
+                            {!msg.image && (
+                              <button onClick={() => editMessage(msg.id, msg.text)}>編輯</button>
+                            )}
+                            <button onClick={() => unsendMessage(msg.id)}>回收</button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 自己的頭像 (右側) */}
+                    {msg.uid === user.uid && (
+                      <img src={profile?.photoURL || "/donlogo.jpeg"} alt="avatar" className="chat-avatar" />
+                    )}
+                  </div>
+                ))}
               <div ref={messagesEndRef} />
             </main>
-
             <form className="chat-input-area" onSubmit={sendMessage}>
+              {/* 隱藏的檔案選取器 */}
+              <input 
+                type="file" 
+                id="image-upload" 
+                accept="image/*" 
+                onChange={handleSendImage} 
+                style={{ display: 'none' }} 
+              />
+              <label htmlFor="image-upload" className="btn-image-label">📷</label>
+              
               <input 
                 type="text" 
                 placeholder="發送訊息..." 
