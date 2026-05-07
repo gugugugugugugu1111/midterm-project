@@ -26,6 +26,9 @@ import {
   arrayUnion   
 } from "firebase/firestore";
 
+import { storage } from './firebase';
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -50,9 +53,13 @@ useEffect(() => {
       const userSnap = await getDoc(userRef); // 記得頂部要 import getDoc
       
       if (!userSnap.exists()) {
+        const defaultUsername = currentUser.email.split('@')[0];
+        const defaultPhoto = "/donlogo.jpeg";
         await setDoc(userRef, {
           email: currentUser.email,
           uid: currentUser.uid,
+          username: defaultUsername,
+          photoURL: defaultPhoto,
           inviteId: `${currentUser.email.split('@')[0]}_${Math.floor(Math.random() * 10000)}` 
         });
       }
@@ -119,29 +126,26 @@ const saveProfile = async () => {
     alert("儲存失敗：" + err.message);
   }
 };
-// 修改邀請 ID 的功能
-const updateInviteId = async () => {
-  const newId = prompt("設置你的專屬ID (不可重複)：", profile?.inviteId);
-  if (!newId || newId === profile?.inviteId) return;
+const handleImageUpload = (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
 
-  try {
-    // 1. 先去搜尋有沒有別人的 inviteId 等於這個新 ID
-    const q = query(collection(db, "users"), where("inviteId", "==", newId));
-    const querySnapshot = await getDocs(q);
-
-    // 2. 如果結果不為空，代表有人捷足先登了
-    if (!querySnapshot.empty) {
-      alert("ID 已被別人使用，請更換。");
-      return;
-    }
-
-    // 3. 確定沒人使用，才更新
-    await updateDoc(doc(db, "users", user.uid), { inviteId: newId });
-    alert("ID 已更新！");
-  } catch (err) {
-    alert("檢查重複時出錯：" + err.message);
+  // 限制檔案大小 (Base64 會膨脹體積，建議限制在 200KB 以內)
+  if (file.size > 200 * 1024) {
+    alert("檔案太大了！請上傳 200KB 以下的圖片以符合資料庫限制。");
+    return;
   }
+
+  const reader = new FileReader();
+  reader.onloadend = () => {
+    // 這就是圖片的 Base64 字串
+    const base64String = reader.result;
+    setTempProfile({ ...tempProfile, photoURL: base64String });
+    alert("圖片處理完成！按下儲存即可更新。");
+  };
+  reader.readAsDataURL(file);
 };
+
 
   // 2. 監聽房間列表 (載入該使用者參與的房間)
   useEffect(() => {
@@ -313,12 +317,33 @@ const inviteUserByInviteId = async () => {
 
   const handleSignIn = () => {
     if (!email || !password) return alert("請輸入帳號密碼");
-    signInWithEmailAndPassword(auth, email, password).catch(err => alert('帳號或密碼錯誤'));
+    
+    signInWithEmailAndPassword(auth, email, password)
+      .catch((error) => {
+        // 這裡處理各種錯誤狀況
+        if (error.code === 'auth/user-not-found') {
+          alert('此帳號尚未註冊，請先註冊。');
+        } else if (error.code === 'auth/wrong-password') {
+          alert('密碼輸入錯誤，請再試一次');
+        } else {
+          alert('登入失敗' );
+        }
+      });
   };
 
-  const handleSignUp = () => {
+  const handleSignUp = async () => {
     if (!email || !password) return alert("請輸入帳號密碼");
-    createUserWithEmailAndPassword(auth, email, password).catch(err => alert('註冊失敗，請檢查格式'));
+
+    try {
+      await createUserWithEmailAndPassword(auth, email, password);
+      alert("註冊成功！。");
+    } catch (err) {
+      if (err.code === 'auth/email-already-in-use') {
+        alert("此 Email 已註冊過。");
+      } else {
+        alert("註冊失敗：" );
+      }
+    }
   };
 
   const handleLogout = () => signOut(auth).then(() => {
@@ -407,7 +432,8 @@ const inviteUserByInviteId = async () => {
             <main className="chat-messages">
               {messages.map((msg) => (
                 <div key={msg.id} className={`msg-wrapper ${msg.uid === user.uid ? 'sent' : 'received'}`}>
-                  {/* 只有接收到的訊息顯示左側頭像 */}
+                  
+                  {/* 接收到的訊息：目前仍使用發送當時存的圖片 */}
                   {msg.uid !== user.uid && (
                     <img src={msg.photoURL || "https://via.placeholder.com/30"} alt="avatar" className="chat-avatar" />
                   )}
@@ -419,9 +445,13 @@ const inviteUserByInviteId = async () => {
                     </div>
                   </div>
 
-                  {/* 只有發送的訊息顯示右側頭像 (選配，若想跟截圖一致) */}
+                  {/* 發送的訊息（你自己）：強制使用目前最新的 profile 圖片，而不是舊訊息裡的 */}
                   {msg.uid === user.uid && (
-                    <img src={msg.photoURL || "https://via.placeholder.com/30"} alt="avatar" className="chat-avatar" />
+                    <img 
+                      src={profile?.photoURL || "/donlogo.jpeg"} 
+                      alt="avatar" 
+                      className="chat-avatar" 
+                    />
                   )}
                 </div>
               ))}
@@ -466,20 +496,33 @@ const inviteUserByInviteId = async () => {
           <div className="profile-modal">
             <h2>編輯個人檔案</h2>
             <div className="profile-fields">
-              {/* 新增專屬 ID 欄位 */}
+            
+
+              <label>個人頭像 (Profile Picture)</label>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <img src={tempProfile.photoURL} alt="preview" className="mini-avatar" />
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={handleImageUpload} 
+                    style={{ border: 'none', background: 'transparent' }}
+                  />
+                </div>
+                <small style={{ color: '#94a3b8' }}>或直接輸入網址：</small>
+                <input 
+                  value={tempProfile.photoURL} 
+                  onChange={e => setTempProfile({...tempProfile, photoURL: e.target.value})} 
+                />
+              
+              <label>使用者名稱 (Username)</label>
+              <input value={tempProfile.username} onChange={e => setTempProfile({...tempProfile, username: e.target.value})} />
+               {/* 新增專屬 ID 欄位 */}
               <label>ID (用於邀請，不可重複)</label>
               <input 
                 value={tempProfile.inviteId} 
                 onChange={e => setTempProfile({...tempProfile, inviteId: e.target.value})} 
                 placeholder="例如: lucky_cat_88"
               />
-
-              <label>頭像網址 (Profile Picture URL)</label>
-              <input value={tempProfile.photoURL} onChange={e => setTempProfile({...tempProfile, photoURL: e.target.value})} />
-              
-              <label>使用者名稱 (Username)</label>
-              <input value={tempProfile.username} onChange={e => setTempProfile({...tempProfile, username: e.target.value})} />
-              
               <label>Email (不可修改)</label>
               <input value={user.email} disabled className="disabled-input" />
               
