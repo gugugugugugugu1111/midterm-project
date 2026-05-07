@@ -47,6 +47,7 @@ function App() {
   const [showRoomInfoModal, setShowRoomInfoModal] = useState(false);
   const [editRoomName, setEditRoomName] = useState("");
   const [roomMembersData, setRoomMembersData] = useState([]);
+  const [blockedUsersData, setBlockedUsersData] = useState([]); 
 
   useEffect(() => {
     if (profile) {
@@ -115,7 +116,7 @@ function App() {
     }
   }, [user]);
 
-  const openProfile = () => {
+  const openProfile = async () => {
     setTempProfile({
       username: profile?.username || "",
       phone: profile?.phone || "",
@@ -124,6 +125,35 @@ function App() {
       inviteId: profile?.inviteId || ""
     });
     setShowProfileModal(true);
+
+    const blockedUids = profile?.blockedUsers || [];
+    if (blockedUids.length > 0) {
+      try {
+        const blockedDocs = await Promise.all(
+          blockedUids.map(uid => getDoc(doc(db, "users", uid)))
+        );
+        const bData = blockedDocs.map(d => d.exists() ? d.data() : null).filter(Boolean);
+        setBlockedUsersData(bData);
+      } catch (err) {
+        console.error("抓取黑名單失敗", err);
+      }
+    } else {
+      setBlockedUsersData([]);
+    }
+  };
+  const handleUnblock = async (targetUid) => {
+    if (!window.confirm("確定要解除封鎖此使用者嗎？")) return;
+    try {
+      await updateDoc(doc(db, "users", user.uid), {
+        // 從 blockedUsers 陣列中移除該 UID
+        blockedUsers: blockedUsers.filter(id => id !== targetUid)
+      });
+      
+      setBlockedUsersData(prev => prev.filter(u => u.uid !== targetUid));
+      alert("已解除封鎖！");
+    } catch (err) {
+      alert("解除封鎖失敗");
+    }
   };
 
   const saveProfile = async () => {
@@ -456,7 +486,7 @@ function App() {
         } else if (error.code === 'auth/wrong-password') {
           alert('密碼輸入錯誤，請再試一次');
         } else {
-          alert('登入失敗' );
+          alert('登入失敗，帳號密碼錯誤或帳號不存在。' );
         }
       });
   };
@@ -471,7 +501,7 @@ function App() {
       if (err.code === 'auth/email-already-in-use') {
         alert("此 Email 已註冊過。");
       } else {
-        alert("註冊失敗：" );
+        alert("註冊失敗，密碼長度至少六個字元。" );
       }
     }
   };
@@ -843,6 +873,30 @@ function App() {
               
               <label>地址 (Address)</label>
               <textarea value={tempProfile.address} onChange={e => setTempProfile({...tempProfile, address: e.target.value})} />
+                <label style={{ marginTop: '20px', borderBottom: '1px solid #334155', paddingBottom: '5px' }}>
+                黑名單列表 ({blockedUsersData.length} 人)
+              </label>
+              <div style={{ maxHeight: '150px', overflowY: 'auto', marginTop: '10px', paddingRight: '5px' }}>
+                {blockedUsersData.map(blockedUser => (
+                  <div key={blockedUser.uid} style={{ 
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '8px 12px', backgroundColor: '#0f172a', 
+                    borderRadius: '8px', marginBottom: '8px' 
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <img src={blockedUser.photoURL || "/donlogo.jpeg"} alt="avatar" className="mini-avatar" style={{width: '28px', height: '28px'}} />
+                      <span style={{ color: 'white', fontSize: '0.9rem' }}>{blockedUser.username || blockedUser.email}</span>
+                    </div>
+                    <button 
+                      onClick={() => handleUnblock(blockedUser.uid)}
+                      style={{ background: '#ef4444', color: 'white', border: 'none', padding: '4px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '0.8rem' }}
+                    >
+                      解除
+                    </button>
+                  </div>
+                ))}
+                {blockedUsersData.length === 0 && <div style={{ color: '#94a3b8', fontSize: '0.85rem' }}>目前沒有封鎖任何人。</div>}
+              </div>
             </div>
             <div className="modal-btns">
               <button className="btn-cancel" onClick={() => setShowProfileModal(false)}>取消</button>
