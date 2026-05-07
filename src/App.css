@@ -72,6 +72,7 @@ body {
    ========================================= */
 .sidebar {
   width: 280px;
+  max-width: 35vw; 
   background-color: #1e293b;
   border-right: 1px solid #334155;
   display: flex;
@@ -130,14 +131,25 @@ body {
 }
 
 .chat-header-content {
-  display: flex; align-items: center; justify-content: space-between;
-  width: 100%; gap: 20px;
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between;
+  width: 100%; 
+  gap: 10px;
+  flex-wrap: wrap; 
 }
 
-.chat-header-content h3 { margin: 0; color: #38bdf8; white-space: nowrap; flex-shrink: 0; }
+.chat-header-content h3 { 
+  margin: 0; 
+  color: #38bdf8; 
+  white-space: nowrap; 
+  overflow: hidden; 
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
 
 .search-input {
-  flex: 1; min-width: 120px; max-width: 400px;
+  flex: 1 1 120px; 
   background-color: #334155 !important; color: #f8fafc !important;
   border: 1px solid #475569 !important; padding: 8px 15px;
   border-radius: 8px; outline: none; transition: all 0.2s;
@@ -333,3 +345,23 @@ body {
 }
 
 .highlight-flash { animation: flash-highlight 1.5s ease-in-out; border-radius: 8px; }
+
+/* =========================================
+   11. RWD 響應式設計 (小螢幕優化)
+   ========================================= */
+@media screen and (max-width: 768px) {
+  .chat-header {
+    padding: 10px;
+  }
+  .chat-messages {
+    padding: 10px;
+  }
+  
+  .msg-ops-outside {
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  .sidebar-header h4 { font-size: 1rem; }
+  .user-name-display { font-size: 1rem !important; }
+}
