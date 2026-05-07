@@ -44,7 +44,7 @@ function App() {
   const [blockedUsers, setBlockedUsers] = useState([]); // 紀錄你封鎖的人的 UID
   const [profile, setProfile] = useState(null);
   const messageRefs = useRef({});
-  const [isMeBlockedByPeer, setIsMeBlockedByPeer] = useState(false);
+  const [usersBlockingMe, setUsersBlockingMe] = useState([]);
 
   useEffect(() => {
     if (profile) {
@@ -296,21 +296,34 @@ function App() {
   }, [messages]);
 // 在其他 useEffect 附近新增這個，用來偵測對方是否封鎖我
 
+// 監聽房間內所有成員的實時封鎖名單
   useEffect(() => {
-    if (user && currentRoom && currentRoom.members?.length === 2) {
-      // 找到對方的 UID
-      const otherId = currentRoom.members.find(m => m !== user.uid);
-      
-      // 監聽對方的個人資料，看他的 blockedUsers 是否包含我
-      const unsubscribe = onSnapshot(doc(db, "users", otherId), (docSnap) => {
-        if (docSnap.exists()) {
-          const peerBlockedList = docSnap.data().blockedUsers || [];
-          setIsMeBlockedByPeer(peerBlockedList.includes(user.uid));
-        }
+    if (user && currentRoom && currentRoom.members) {
+      // 針對房間內的所有人建立監聽
+      const unsubs = currentRoom.members.map(memberId => {
+        if (memberId === user.uid) return () => {}; // 不用監聽自己
+        
+        return onSnapshot(doc(db, "users", memberId), (docSnap) => {
+          if (docSnap.exists()) {
+            const peerBlockedList = docSnap.data().blockedUsers || [];
+            if (peerBlockedList.includes(user.uid)) {
+              // 他封鎖了我：加入名單
+              setUsersBlockingMe(prev => prev.includes(memberId) ? prev : [...prev, memberId]);
+            } else {
+              // 他沒封鎖我 (或解除封鎖)：從名單移除
+              setUsersBlockingMe(prev => prev.filter(id => id !== memberId));
+            }
+          }
+        });
       });
-      return () => unsubscribe();
+
+      // 離開房間或切換房間時，清除所有監聽器並重置狀態
+      return () => {
+        unsubs.forEach(unsub => unsub());
+        setUsersBlockingMe([]);
+      };
     } else {
-      setIsMeBlockedByPeer(false);
+      setUsersBlockingMe([]);
     }
   }, [currentRoom, user]);
 
@@ -460,12 +473,14 @@ function App() {
     const msgText = newMessage;
     const replyData = replyingTo; 
     const otherId = currentRoom.members?.find(m => m !== user.uid);
-  if (currentRoom.members?.length === 2) {
-    if (blockedUsers.includes(otherId) || isMeBlockedByPeer) {
-      alert("封鎖狀態下無法傳送訊息。");
-      return;
-    }
-  }
+    if (currentRoom.members?.length === 2) {
+        const otherId = currentRoom.members.find(m => m !== user.uid);
+        // 改用 usersBlockingMe.includes(otherId)
+        if (blockedUsers.includes(otherId) || usersBlockingMe.includes(otherId)) {
+          alert("封鎖狀態下無法傳送訊息。");
+          return;
+        }
+      }
     setNewMessage("");
     setReplyingTo(null);
 
@@ -574,30 +589,31 @@ function App() {
             <main className="chat-messages">
               {/* 封鎖警告橫幅 (加分項要求的 UI) */}
               
-              {currentRoom?.members?.length === 2 && (blockedUsers.some(m => currentRoom.members.includes(m)) || isMeBlockedByPeer) && (
-                <div className="block-warning-banner">
-                  ⚠️ 封鎖中：你們已無法互相傳送私人訊息。
-                </div>
-              )}
+              {currentRoom?.members?.length === 2 && (() => {
+                  const otherId = currentRoom.members.find(m => m !== user.uid);
+                  const iBlockHim = blockedUsers.includes(otherId);
+                  const heBlocksMe = usersBlockingMe.includes(otherId);
+                  
+                  if (iBlockHim || heBlocksMe) {
+                    return <div className="block-warning-banner">⚠️ 封鎖中：你們已無法互相傳送私人訊息。</div>;
+                  }
+                  return null;
+              })()}
               {messages
                 .filter(msg => {
                     const matchesSearch = msg.text.toLowerCase().includes(searchKeyword.toLowerCase());
-  
-                    // 2. 我封鎖了他 (iBlockHim)
-                    // 不論新舊訊息，只要發話者在我的黑名單，我就看不見
+
+                    // 1. 我封鎖了他 (iBlockHim)
                     const iBlockHim = blockedUsers.includes(msg.uid);
                     
-                    // 3. 他封鎖了我 (heBlocksMe)
-                    // A. 針對「新訊息」：檢查訊息內的快照
-                    const blockedBySnapshot = msg.senderBlockedUsers?.includes(user.uid);
+                    // 2. 他封鎖了我 (不分群組或私聊，直接看實時名單)
+                    const heBlocksMeLive = usersBlockingMe.includes(msg.uid);
                     
-                    // B. 針對「舊訊息」與「即時狀態」：檢查 1對1 房間中對方的實時封鎖名單
-                    // 這裡利用你實作的 isMeBlockedByPeer 狀態，且只過濾別人的訊息
-                    const isPrivateRoom = currentRoom?.members?.length === 2;
-                    const blockedByLiveStatus = isPrivateRoom && isMeBlockedByPeer && msg.uid !== user.uid;
+                    // 3. 快照保險 (適用於已經離開房間的人)
+                    const heBlocksMeSnapshot = msg.senderBlockedUsers?.includes(user.uid);
 
-                    // 結論：三者只要有一個成立，訊息就隱藏
-                    return matchesSearch && !iBlockHim && !blockedBySnapshot && !blockedByLiveStatus;
+                    // 只要任何一個封鎖條件成立，訊息就徹底消失！
+                    return matchesSearch && !iBlockHim && !heBlocksMeLive && !heBlocksMeSnapshot;
                 })
                 .map((msg) => (
                   <div 
