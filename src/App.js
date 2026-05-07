@@ -45,6 +45,9 @@ function App() {
   const [profile, setProfile] = useState(null);
   const messageRefs = useRef({});
   const [usersBlockingMe, setUsersBlockingMe] = useState([]);
+  const [showRoomInfoModal, setShowRoomInfoModal] = useState(false);
+  const [editRoomName, setEditRoomName] = useState("");
+  const [roomMembersData, setRoomMembersData] = useState([]);
 
   useEffect(() => {
     if (profile) {
@@ -472,7 +475,6 @@ function App() {
     
     const msgText = newMessage;
     const replyData = replyingTo; 
-    const otherId = currentRoom.members?.find(m => m !== user.uid);
     if (currentRoom.members?.length === 2) {
         const otherId = currentRoom.members.find(m => m !== user.uid);
         // 改用 usersBlockingMe.includes(otherId)
@@ -520,6 +522,39 @@ function App() {
     }
 
     await updateDoc(msgRef, { reactions: currentReactions });
+  };
+  const openRoomInfo = async () => {
+    if (!currentRoom) return;
+    setEditRoomName(currentRoom.name);
+    setShowRoomInfoModal(true);
+
+    try {
+      // 根據 currentRoom.members (UID陣列) 去 users 集合抓取詳細資料
+      const memberDocs = await Promise.all(
+        currentRoom.members.map(uid => getDoc(doc(db, "users", uid)))
+      );
+      
+      const membersData = memberDocs.map(d => {
+        if (d.exists()) return d.data();
+        return { uid: d.id, username: "未知使用者" };
+      });
+      
+      setRoomMembersData(membersData);
+    } catch (error) {
+      console.error("抓取成員失敗:", error);
+    }
+  };
+  const saveRoomName = async () => {
+    if (!editRoomName.trim()) return alert("群組名稱不能為空！");
+    try {
+      await updateDoc(doc(db, "rooms", currentRoom.id), {
+        name: editRoomName.trim()
+      });
+      alert("群組名稱已更新！");
+      // 更新後可以選擇不關閉視窗，讓使用者能繼續看成員
+    } catch (err) {
+      alert("更新失敗：" + err.message);
+    }
   };
   if (loading) return <div className="loading-screen">載入中...</div>;
 
@@ -570,8 +605,9 @@ function App() {
           {/* 右側訊息區域 */}
           <div className="chat-container">
             <header className="chat-header">
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', width: '100%' }}>
+              <div className="chat-header-content">
                 <h3>{currentRoom ? `# ${currentRoom.name}` : "請選擇房間"}</h3>
+                
                 {/* 搜尋框 */}
                 <input 
                   type="text" 
@@ -580,8 +616,13 @@ function App() {
                   onChange={(e) => setSearchKeyword(e.target.value)}
                   className="search-input"
                 />
+                
+                {/* 右側按鈕組 */}
                 {currentRoom && (
-                  <button onClick={inviteUserByInviteId} className="btn-mini">+ 邀請</button>
+                  <div className="header-actions">
+                    <button onClick={inviteUserByInviteId} className="btn-header btn-invite">+ 邀請</button>
+                    <button onClick={openRoomInfo} className="btn-header btn-setting">⚙️ 設定</button>
+                  </div>
                 )}
               </div>
             </header>
@@ -795,6 +836,58 @@ function App() {
             <div className="modal-btns">
               <button className="btn-cancel" onClick={() => setShowProfileModal(false)}>取消</button>
               <button className="btn-save" onClick={saveProfile}>儲存變更</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showRoomInfoModal && currentRoom && (
+        <div className="modal-overlay">
+          <div className="profile-modal">
+            <h2>群組設定</h2>
+            <div className="profile-fields">
+              
+              {/* 1. 修改群組名稱區塊 */}
+              <label>修改群組名稱</label>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
+                <input 
+                  value={editRoomName} 
+                  onChange={e => setEditRoomName(e.target.value)} 
+                  style={{ flex: 1 }}
+                />
+                <button className="btn-save" onClick={saveRoomName}>儲存</button>
+              </div>
+
+              {/* 2. 成員名單區塊 */}
+              <label style={{ marginTop: '25px', borderBottom: '1px solid #334155', paddingBottom: '5px' }}>
+                群組成員名單 ({roomMembersData.length} 人)
+              </label>
+              
+              <div style={{ maxHeight: '250px', overflowY: 'auto', marginTop: '10px', paddingRight: '5px' }}>
+                {roomMembersData.map(member => (
+                  <div key={member.uid} style={{ 
+                    display: 'flex', alignItems: 'center', gap: '15px', 
+                    padding: '10px', backgroundColor: '#0f172a', 
+                    borderRadius: '8px', marginBottom: '8px' 
+                  }}>
+                    <img src={member.photoURL || "/donlogo.jpeg"} alt="avatar" className="mini-avatar" />
+                    <div>
+                      <div style={{ color: 'white', fontWeight: '500', fontSize: '0.95rem' }}>
+                        {member.username || member.email}
+                        {member.uid === currentRoom.creator && <span style={{ color: '#f59e0b', fontSize: '10px', marginLeft: '5px' }}>管理員</span>}
+                      </div>
+                      <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: '2px' }}>
+                        ID: {member.inviteId || "無"}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {roomMembersData.length === 0 && <div style={{ color: '#94a3b8', fontSize: '0.85rem' }}>載入中...</div>}
+              </div>
+
+            </div>
+            
+            <div className="modal-btns" style={{ marginTop: '20px' }}>
+              <button className="btn-cancel" onClick={() => setShowRoomInfoModal(false)}>關閉</button>
             </div>
           </div>
         </div>

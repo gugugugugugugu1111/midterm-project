@@ -1,8 +1,10 @@
-/* src/App.css */
+/* =========================================
+   1. 全域與基礎佈局
+   ========================================= */
 body {
   margin: 0;
   padding: 0;
-  background-color: #0f172a; /* 深色科技感背景 */
+  background-color: #0f172a;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   display: flex;
   justify-content: center;
@@ -10,7 +12,17 @@ body {
   min-height: 100vh;
 }
 
-/* 登入卡片 */
+.main-layout {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  background-color: #0f172a;
+  overflow: hidden;
+}
+
+/* =========================================
+   2. 登入系統 (Auth Card)
+   ========================================= */
 .auth-card {
   background: #ffffff;
   padding: 40px;
@@ -20,183 +32,44 @@ body {
   text-align: center;
 }
 
-.auth-card h2 {
-  margin-top: 0;
-  color: #1e293b;
-  font-size: 28px;
-}
+.auth-card h2 { margin-top: 0; color: #1e293b; font-size: 28px; }
+.input-group { text-align: left; margin-bottom: 20px; }
+.input-group label { display: block; font-weight: 600; color: #475569; margin-bottom: 8px; }
 
-/* 輸入框組頭 */
-.input-group {
-  text-align: left;
-  margin-bottom: 20px;
-}
-
-.input-group label {
-  display: block; /* 讓標籤自佔一行 */
-  font-weight: 600;
-  color: #475569;
-  margin-bottom: 8px;
-}
-
-input {
-  width: 100%; /* 寬度填滿 */
+.auth-card input {
+  width: 100%;
   padding: 12px;
   border: 2px solid #e2e8f0;
   border-radius: 10px;
   font-size: 16px;
-  box-sizing: border-box; /* 極重要：防止寬度溢出 */
+  box-sizing: border-box;
 }
 
-input:focus {
-  outline: none;
-  border-color: #38bdf8;
-}
+.auth-card input:focus { outline: none; border-color: #38bdf8; }
 
-/* 按鈕樣式 */
 .btn-primary {
-  width: 100%;
-  padding: 14px;
-  background-color: #38bdf8;
-  color: white;
-  border: none;
-  border-radius: 10px;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-  margin-bottom: 10px;
-  transition: 0.3s;
+  width: 100%; padding: 14px; background-color: #38bdf8; color: white;
+  border: none; border-radius: 10px; font-size: 16px; font-weight: 700;
+  cursor: pointer; margin-bottom: 10px; transition: 0.3s;
 }
+.btn-primary:hover { background-color: #0ea5e9; }
 
-.btn-primary:hover {
-  background-color: #0ea5e9;
-}
-
-/* 註冊按鈕用灰色區分 */
 .btn-secondary {
-  width: 100%;
-  padding: 10px;
-  background: none;
-  border: 1px solid #cbd5e1;
-  color: #64748b;
-  border-radius: 10px;
-  cursor: pointer;
+  width: 100%; padding: 10px; background: none; border: 1px solid #cbd5e1;
+  color: #64748b; border-radius: 10px; cursor: pointer;
 }
 
-/* Google 按鈕 */
 .btn-google {
-  width: 100%;
-  padding: 12px;
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  cursor: pointer;
-  font-weight: 600;
+  width: 100%; padding: 12px; background: white; border: 1px solid #e2e8f0;
+  border-radius: 10px; display: flex; align-items: center; justify-content: center;
+  gap: 10px; cursor: pointer; font-weight: 600; margin-top: 20px;
 }
 
-.divider {
-  margin: 20px 0;
-  color: #94a3b8;
-  font-size: 14px;
-  position: relative;
-}
+.divider { margin: 20px 0; color: #94a3b8; font-size: 14px; position: relative; }
 
-/* 全螢幕容器 */
-.chat-container {
-  width: 100vw;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background-color: #0f172a; /* 深色背景 */
-  color: white;
-}
-
-/* 頂部標題列 */
-.chat-header {
-  padding: 1rem 2rem;
-  background-color: #1e293b;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid #334155;
-}
-
-.chat-header h3 { margin: 0; color: #38bdf8; }
-
-/* 訊息顯示區 */
-.chat-messages {
-  flex: 1;
-  overflow-y: auto;
-  padding: 2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-/* 訊息氣泡 */
-.msg-bubble {
-  max-width: 70%;
-  padding: 0.75rem 1rem;
-  border-radius: 1rem;
-  font-size: 1rem;
-  line-height: 1.4;
-}
-
-.msg-bubble.sent {
-  align-self: flex-end;
-  background: #38bdf8;
-  color: white;
-}
-
-.msg-bubble.received {
-  align-self: flex-start;
-  background: #334155;
-  color: white;
-}
-
-/* 底部輸入區 */
-.chat-input-area {
-  padding: 1.5rem;
-  background-color: #1e293b;
-  display: flex;
-  gap: 1rem;
-  border-top: 1px solid #334155;
-}
-
-.chat-input-area input {
-  flex: 1;
-  background: #0f172a;
-  border: 1px solid #334155;
-  color: white;
-  padding: 0.75rem;
-  border-radius: 0.5rem;
-}
-
-.btn-send {
-  background: #38bdf8;
-  color: white;
-  border: none;
-  padding: 0 1.5rem;
-  border-radius: 0.5rem;
-  font-weight: bold;
-  cursor: pointer;
-}
-/* src/App.css */
-
-/* 全螢幕佈局 */
-.main-layout {
-  display: flex;
-  width: 100vw;
-  height: 100vh;
-  background-color: #0f172a;
-  overflow: hidden;
-}
-
-/* 左側側邊欄 */
+/* =========================================
+   3. 側邊欄 (Sidebar)
+   ========================================= */
 .sidebar {
   width: 280px;
   background-color: #1e293b;
@@ -214,75 +87,35 @@ input:focus {
   border-bottom: 1px solid #334155;
 }
 
-.sidebar-header h4 {
-  margin: 0;
-  font-size: 1.2rem;
-  color: #38bdf8;
-}
+.sidebar-header h4 { margin: 0; font-size: 1.2rem; color: #38bdf8; }
 
 .btn-add {
-  background: #38bdf8;
-  border: none;
-  color: white;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  cursor: pointer;
-  font-weight: bold;
+  background: #38bdf8; border: none; color: white; width: 30px; height: 30px;
+  border-radius: 50%; cursor: pointer; font-weight: bold;
 }
 
-/* 房間列表項目 */
-.room-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 10px;
-}
+.room-list { flex: 1; overflow-y: auto; padding: 10px; }
 
 .room-item {
-  padding: 12px 15px;
-  margin-bottom: 5px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.2s;
-  color: #94a3b8;
+  padding: 12px 15px; margin-bottom: 5px; border-radius: 8px;
+  cursor: pointer; transition: background 0.2s; color: #94a3b8;
 }
+.room-item:hover { background-color: #334155; color: white; }
+.room-item.active { background-color: #38bdf8; color: white; font-weight: 600; }
 
-.room-item:hover {
-  background-color: #334155;
-  color: white;
-}
-
-.room-item.active {
-  background-color: #38bdf8;
-  color: white;
-  font-weight: 600;
-}
-
-/* 側邊欄底部 (用戶資訊) */
 .sidebar-footer {
-  padding: 15px 20px;
-  background-color: #0f172a;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.user-email {
-  font-size: 0.85rem;
-  color: #94a3b8;
-  word-break: break-all;
+  padding: 15px 20px; background-color: #0f172a;
+  display: flex; flex-direction: column; gap: 10px;
 }
 
 .btn-mini {
-  background: #ef4444;
-  border: none;
-  color: white;
-  padding: 5px;
-  border-radius: 4px;
-  cursor: pointer;
+  background: #ef4444; border: none; color: white;
+  padding: 5px; border-radius: 4px; cursor: pointer;
 }
 
-/* 右側聊天區域容器 */
+/* =========================================
+   4. 右側聊天區域 (Chat Container & Header)
+   ========================================= */
 .chat-container {
   flex: 1;
   display: flex;
@@ -296,549 +129,179 @@ input:focus {
   border-bottom: 1px solid #334155;
 }
 
-.chat-header h3 {
-  margin: 0;
-  color: white;
+.chat-header-content {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; gap: 20px;
 }
 
-/* 訊息顯示區 */
+.chat-header-content h3 { margin: 0; color: #38bdf8; white-space: nowrap; flex-shrink: 0; }
+
+.search-input {
+  flex: 1; min-width: 120px; max-width: 400px;
+  background-color: #334155 !important; color: #f8fafc !important;
+  border: 1px solid #475569 !important; padding: 8px 15px;
+  border-radius: 8px; outline: none; transition: all 0.2s;
+}
+.search-input:focus { border-color: #38bdf8 !important; }
+.search-input::placeholder { color: #94a3b8; }
+
+.header-actions { display: flex; gap: 10px; flex-shrink: 0; }
+.btn-header {
+  padding: 8px 15px; border: none; border-radius: 8px; color: white;
+  font-weight: 600; cursor: pointer; white-space: nowrap; transition: 0.2s; font-size: 0.9rem;
+}
+.btn-invite { background-color: #10b981; }
+.btn-invite:hover { background-color: #059669; }
+.btn-setting { background-color: #475569; }
+.btn-setting:hover { background-color: #334155; }
+
+/* 封鎖警告 */
+.block-warning-banner {
+  background: #7f1d1d; color: #fca5a5; padding: 10px;
+  text-align: center; font-weight: bold; border-bottom: 1px solid #991b1b;
+}
+
+/* =========================================
+   5. 訊息顯示區與氣泡 (Messages & Bubbles)
+   ========================================= */
 .chat-messages {
-  flex: 1;
-  overflow-y: auto;
-  padding: 25px;
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
+  flex: 1; overflow-y: auto; padding: 25px; display: flex;
+  flex-direction: column; gap: 15px; animation: fadeIn 0.5s ease-in-out;
 }
 
-/* 訊息氣泡 */
+.msg-wrapper { display: flex; margin-bottom: 20px; gap: 10px; align-items: flex-end; }
+.msg-wrapper.sent { justify-content: flex-end; flex-direction: row; }
+
+.msg-content-wrapper { display: flex; flex-direction: column; max-width: 70%; }
+.sent .msg-content-wrapper { align-items: flex-end; }
+
+.msg-username { font-size: 0.75rem; color: #94a3b8; margin-bottom: 4px; font-weight: 500; }
+
+.msg-bubble-row { display: flex; align-items: center; gap: 8px; }
+.sent .msg-bubble-row { flex-direction: row-reverse; }
+
 .msg-bubble {
-  max-width: 70%;
-  padding: 10px 15px;
-  border-radius: 15px;
-  position: relative;
+  padding: 10px 16px; border-radius: 18px; position: relative;
+  word-break: break-all; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  animation: bubblePop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
-.msg-bubble.sent {
-  align-self: flex-end;
-  background-color: #38bdf8;
-  color: white;
+.sent .msg-bubble { background-color: #38bdf8; color: white; border-bottom-right-radius: 4px; }
+.received .msg-bubble { background-color: #334155; color: white; border-bottom-left-radius: 4px; }
+
+.chat-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; background-color: #1e293b; }
+
+/* --- 圖片訊息優化 --- */
+.msg-image-only { background: transparent !important; padding: 0 !important; box-shadow: none !important; max-width: 300px; position: relative; }
+.sent-image-standalone {
+  width: 100%; max-height: 300px; border-radius: 12px; object-fit: contain;
+  background-color: #1e293b; cursor: pointer; border: 1px solid #334155; transition: transform 0.2s; display: block;
+}
+.sent-image-standalone:hover { transform: scale(1.02); }
+
+/* =========================================
+   6. 回覆與引用功能 (Reply)
+   ========================================= */
+.reply-quote {
+  background: rgba(255, 255, 255, 0.1); border-left: 3px solid #38bdf8;
+  padding: 5px 10px; font-size: 11px; cursor: pointer; border-radius: 4px; margin-bottom: 4px;
 }
 
-.msg-bubble.received {
-  align-self: flex-start;
-  background-color: #334155;
-  color: white;
+.reply-preview-bar {
+  background: #1e293b; border-top: 2px solid #38bdf8; padding: 10px 20px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.reply-preview-bar button { background: none; border: none; color: white; cursor: pointer; }
+
+/* =========================================
+   7. 懸浮操作按鈕與 Emoji 選單
+   ========================================= */
+.msg-ops-outside {
+  display: flex; flex-direction: row; gap: 10px; margin: 0 10px;
+  opacity: 0; visibility: hidden; transition: all 0.2s ease; flex-shrink: 0; align-items: center;
+}
+.msg-wrapper:hover .msg-ops-outside { opacity: 1; visibility: visible; }
+
+.msg-ops-outside button {
+  background: none; border: none; color: #94a3b8; font-size: 12px; cursor: pointer; padding: 0; white-space: nowrap;
+}
+.msg-ops-outside button:hover { color: #f8fafc; text-decoration: underline; }
+
+.btn-block-text { color: #ef4444 !important; font-weight: 600; }
+.btn-block-text:hover { color: #dc2626 !important; }
+
+/* Emoji 觸發與彈出 */
+.emoji-trigger { position: relative; cursor: pointer; font-size: 16px;}
+.emoji-popover {
+  display: none; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+  background: #1e293b; border: 1px solid #38bdf8; border-radius: 20px; padding: 5px; z-index: 10;
+}
+.emoji-trigger:hover .emoji-popover { display: flex; gap: 5px; }
+
+/* Emoji 按鈕狀態 */
+.emoji-popover button {
+  font-size: 18px; padding: 4px 8px; border-radius: 8px; transition: background 0.2s; text-decoration: none !important;
+}
+.emoji-popover button:hover { background: rgba(255, 255, 255, 0.1); }
+.emoji-popover button.active-reaction-btn { background-color: #38bdf8; color: white !important;}
+.emoji-popover button.active-reaction-btn:hover { background-color: #0ea5e9; }
+
+/* Emoji 顯示在氣泡下方的膠囊 */
+.reactions-pill {
+  display: flex; gap: 4px; background: rgba(0,0,0,0.5); padding: 2px 8px;
+  border-radius: 12px; font-size: 12px; position: absolute; bottom: -12px; right: 5px; cursor: pointer;
 }
 
-.msg-email {
-  font-size: 0.75rem;
-  margin-bottom: 4px;
-  opacity: 0.8;
-}
-
-/* 輸入區域 */
+/* =========================================
+   8. 底部輸入區 (Input Area)
+   ========================================= */
 .chat-input-area {
-  padding: 20px;
-  background-color: #1e293b;
-  display: flex;
-  gap: 15px;
+  padding: 20px; background-color: #1e293b; display: flex; gap: 15px; border-top: 1px solid #334155;
 }
 
 .chat-input-area input {
-  flex: 1;
-  background-color: #0f172a;
-  border: 1px solid #334155;
-  border-radius: 10px;
-  padding: 12px 15px;
-  color: white;
+  flex: 1; background-color: #0f172a; border: 1px solid #334155;
+  border-radius: 10px; padding: 12px 15px; color: white;
 }
 
 .btn-send {
-  background-color: #38bdf8;
-  border: none;
-  color: white;
-  padding: 0 20px;
-  border-radius: 10px;
-  font-weight: 600;
-  cursor: pointer;
+  background-color: #38bdf8; border: none; color: white; padding: 0 20px;
+  border-radius: 10px; font-weight: 600; cursor: pointer;
 }
+.btn-send:disabled { background-color: #475569; cursor: not-allowed; }
+.btn-image-label { font-size: 24px; cursor: pointer; color: #38bdf8; display: flex; align-items: center; }
 
-.btn-send:disabled {
-  background-color: #475569;
-  cursor: not-allowed;
-}
-/* 定義彈出動畫 */
-@keyframes bubblePop {
-  0% {
-    opacity: 0;
-    transform: translateY(20px) scale(0.9);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-/* 將動畫套用到訊息泡泡上 */
-.msg-bubble {
-  animation: bubblePop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-  /* cubic-bezier 讓它有一點點回彈的效果，看起來更生動 */
-}
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.chat-messages {
-  animation: fadeIn 0.5s ease-in-out;
-}
-
+/* =========================================
+   9. 模態視窗與共用元件 (Modals)
+   ========================================= */
 .modal-overlay {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
   background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 1000;
 }
-.profile-modal {
-  background: #1e293b; padding: 30px; border-radius: 15px; width: 400px; color: white;
-}
+.profile-modal { background: #1e293b; padding: 30px; border-radius: 15px; width: 400px; color: white; }
 .profile-fields label { display: block; margin-top: 15px; font-size: 0.8rem; color: #94a3b8; }
 .profile-fields input, .profile-fields textarea {
-  width: 100%; background: #0f172a; border: 1px solid #334155; color: white; padding: 8px; border-radius: 5px; margin-top: 5px;
+  width: 100%; background: #0f172a; border: 1px solid #334155; color: white; padding: 8px; border-radius: 5px; margin-top: 5px; box-sizing: border-box;
 }
 .modal-btns { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
 .btn-save { background: #38bdf8; border: none; color: white; padding: 8px 20px; border-radius: 5px; cursor: pointer; }
-.mini-avatar { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; margin-right: 10px; }
-/* 每一則訊息的容器 */
-.msg-wrapper {
-  display: flex;
-  margin-bottom: 20px;
-  gap: 10px;
-  align-items: flex-end; /* 頭像對齊泡泡底部 */
+.btn-cancel { background: #475569; border: none; color: white; padding: 8px 20px; border-radius: 5px; cursor: pointer; }
+.mini-avatar { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; }
+
+/* =========================================
+   10. 動畫定義 (Animations)
+   ========================================= */
+@keyframes bubblePop {
+  0% { opacity: 0; transform: translateY(10px) scale(0.95); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.msg-wrapper.sent {
-  flex-direction: row; /* 若右邊也要頭像，改為 row */
-  justify-content: flex-end;
-}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-.msg-wrapper.received {
-  justify-content: flex-start;
-}
-
-/* 訊息內容區 (名稱 + 泡泡) */
-.msg-content {
-  display: flex;
-  flex-direction: column;
-  max-width: 60%;
-}
-
-.sent .msg-content {
-  align-items: flex-end; /* 自己發的名稱靠右 */
-}
-
-.received .msg-content {
-  align-items: flex-start; /* 別人發的名稱靠左 */
-}
-
-/* 使用者名稱樣式 */
-.msg-username {
-  font-size: 0.75rem;
-  color: #94a3b8;
-  margin-bottom: 4px;
-  font-weight: 500;
-}
-
-/* 訊息泡泡微調 */
-.msg-bubble {
-  padding: 10px 16px;
-  border-radius: 18px;
-  word-break: break-all;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-.sent .msg-bubble {
-  background-color: #38bdf8;
-  color: white;
-  border-bottom-right-radius: 4px; /* 做出 Messenger 那種尖角感 */
-}
-
-.received .msg-bubble {
-  background-color: #334155;
-  color: white;
-  border-bottom-left-radius: 4px;
-}
-
-/* 聊天室頭像 */
-.chat-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  object-fit: cover;
-  background-color: #1e293b;
-}
-
-/* 預設隱藏操作按鈕，並加入透明度過渡動畫讓它看起來更滑順 */
-.msg-ops {
-  display: flex;
-  gap: 10px;
-  font-size: 10px;
-  margin-top: 5px;
-  cursor: pointer;
-  justify-content: flex-end;
-  
-  /* 初始狀態：完全透明且不可見 */
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.2s ease-in-out, visibility 0.2s;
-}
-
-/* 當滑鼠移入訊息內容區 (msg-content) 時，顯示操作按鈕 */
-.msg-wrapper.sent:hover .msg-ops {
-  opacity: 0.7;
-  visibility: visible;
-}
-
-/* 滑鼠直接指到按鈕上時加亮 */
-.msg-ops span:hover {
-  text-decoration: underline;
-  opacity: 1;
-  color: #f8fafc;
-}
-.sent-image {
-  max-width: 100%; border-radius: 10px; margin-bottom: 5px;
-}
-.btn-image-label {
-  font-size: 20px; cursor: pointer; padding: 0 10px;
-}
-
-/* 聊天室標頭：確保它是彈性佈局 */
-.chat-header div {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding: 0 10px;
-  box-sizing: border-box;
-}
-
-/* 1. 左側聊天室名稱：防止被擠壓變形 */
-.chat-header h3 {
-  margin: 0;
-  color: white;
-  white-space: nowrap; /* 強制不換行 */
-  flex-shrink: 0;      /* 防止被搜尋框擠小 */
-}
-
-/* 2. 搜尋框：灰底且填滿中間 */
-.search-input {
-  flex: 1;                /* 自動填滿中間所有剩餘空間 */
-  margin: 0 30px;         /* 關鍵：給左右預留固定間距，確保不擠開名稱和按鈕 */
-  max-width: 500px;       /* 限制最大寬度，避免在大螢幕太長 */
-  
-  background-color: #334155 !important; /* 灰底 (Slate 700) */
-  color: #f8fafc !important;
-  border: 1px solid #475569 !important;
-  padding: 8px 15px;
-  border-radius: 8px;
-  outline: none;
-}
-
-.search-input::placeholder {
-  color: #94a3b8;
-}
-
-/* 3. 邀請按鈕：固定大小 */
-.chat-header .btn-mini {
-  flex-shrink: 0;         /* 防止被搜尋框擠小 */
-  background-color: #10b981; /* 綠色 */
-  padding: 8px 15px;
-  white-space: nowrap;
-}
-/* 訊息內容的最外層包裹 */
-.msg-content-wrapper {
-  display: flex;
-  flex-direction: column;
-  max-width: 70%;
-}
-
-/* 氣泡與按鈕所在的橫列 */
-.msg-bubble-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-/* 關鍵：發送者訊息時，讓按鈕排在氣泡左邊 */
-.sent .msg-bubble-row {
-  flex-direction: row-reverse;
-}
-
-/* 氣泡外的操作按鈕樣式 */
-.msg-ops-outside {
-  display: flex;
-  gap: 4px;
-  opacity: 0;           /* 預設隱藏 */
-  visibility: hidden;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-}
-
-/* 當滑鼠移到訊息包裝 (msg-wrapper) 上時才顯示 */
-.msg-wrapper:hover .msg-ops-outside {
-  opacity: 1;
-  visibility: visible;
-}
-
-.msg-ops-outside button {
-  background: #334155;
-  border: none;
-  color: white;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  transition: background 0.2s;
-}
-
-.msg-ops-outside button:hover {
-  background: #475569;
-  transform: scale(1.1);
-}
-
-/* 修正名稱對齊：發送者名稱靠右 */
-.sent .msg-content-wrapper {
-  align-items: flex-end;
-}
-
-/* --- 圖片訊息優化 --- */
-.msg-image-only {
-  background: transparent !important;
-  padding: 0 !important;
-  box-shadow: none !important;
-  /* 確保圖片容器不會撐破佈局 */
-  max-width: 300px; 
-  position: relative;
-}
-
-.sent-image-standalone {
-  width: 100%;           /* 寬度填滿容器 (300px) */
-  max-height: 300px;     /* 限制高度，避免長圖霸佔全螢幕 */
-  border-radius: 12px;
-  object-fit: contain;   /* 完整顯示圖片內容，不裁切 */
-  background-color: #1e293b; /* 圖片載入前的底色 */
-  cursor: pointer;
-  border: 1px solid #334155;
-  transition: transform 0.2s;
-  display: block;        /* 移除底部的空白間隙 */
-}
-
-.sent-image-standalone:hover {
-  transform: scale(1.02);
-}
-
-/* --- 編輯與回收按鈕橫向化 --- */
-.msg-ops-outside {
-  display: flex;
-  flex-direction: row;   /* 強制橫向排列 */
-  gap: 10px;             /* 字與字之間的距離 */
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.2s ease;
-  flex-shrink: 0;        /* 防止按鈕被縮小 */
-  margin: 0 10px;        /* 與氣泡保持一點距離 */
-}
-
-.msg-ops-outside button {
-  background: none;      /* 去掉圓形背景 */
-  border: none;
-  color: #94a3b8;        /* 使用較淡的灰色 */
-  font-size: 12px;       /* 字體小一點比較精緻 */
-  cursor: pointer;
-  padding: 0;
-  white-space: nowrap;   /* 防止字體斷行 */
-}
-
-.msg-ops-outside button:hover {
-  color: #f8fafc;
-  text-decoration: underline; /* 移上去有底線感 */
-  transform: none;            /* 移除縮放效果 */
-}
-
-/* 確保滑鼠移入時顯示 */
-.msg-wrapper:hover .msg-ops-outside {
-  opacity: 1;
-  visibility: visible;
-}
-/* 回覆引用塊 */
-.reply-quote {
-  background: rgba(0, 0, 0, 0.1);
-  border-left: 3px solid #38bdf8;
-  padding: 4px 8px;
-  margin-bottom: 8px;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  opacity: 0.8;
-}
-
-/* 輸入框上方的回覆預覽條 */
-.reply-bar {
-  background: #334155;
-  padding: 8px 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.85rem;
-  border-bottom: 1px solid #38bdf8;
-}
-
-.reply-bar button {
-  background: none; border: none; color: white; cursor: pointer;
-}
-
-/* Emoji (這裡可以用系統內建的，或簡單在 input 旁加個按鈕) */
-.emoji-btn {
-  font-size: 20px;
-  cursor: pointer;
-  background: none;
-  border: none;
-}
-
-/* 回覆引用樣式 */
-.reply-quote {
-  background: rgba(255, 255, 255, 0.1);
-  border-left: 3px solid #38bdf8;
-  padding: 5px 10px;
-  font-size: 11px;
-  cursor: pointer;
-  border-radius: 4px;
-  margin-bottom: 2px;
-}
-
-/* 高亮動畫 (符合 image_169297 要求) */
-@keyframes flash {
-  0% { background-color: rgba(56, 189, 248, 0.5); }
-  100% { background-color: transparent; }
-}
-.highlight-flash {
-  animation: flash 2s ease-out;
-}
-
-/* 回覆預覽條 */
-.reply-preview-bar {
-  background: #1e293b;
-  border-top: 2px solid #38bdf8;
-  padding: 10px 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-/* Emoji 列 */
-.emoji-row {
-  padding: 5px 20px;
-  background: #1e293b;
-  display: flex;
-  gap: 15px;
-  font-size: 1.2rem;
-  cursor: pointer;
-}
-/* Emoji 反應顯示在氣泡下方 */
-.reactions-display {
-  display: flex;
-  gap: 3px;
-  background: rgba(15, 23, 42, 0.6);
-  padding: 2px 6px;
-  border-radius: 10px;
-  position: absolute;
-  bottom: -15px;
-  right: 10px;
-  font-size: 12px;
-}
-
-/* Emoji 選單：平常隱藏，Hover 操作區才出現 */
-.emoji-dropdown {
-  position: relative;
-}
-.emoji-menu {
-  display: none;
-  position: absolute;
-  bottom: 100%;
-  background: #1e293b;
-  border: 1px solid #38bdf8;
-  border-radius: 20px;
-  padding: 5px 10px;
-  white-space: nowrap;
-  z-index: 10;
-}
-.emoji-dropdown:hover .emoji-menu {
-  display: flex;
-  gap: 8px;
-}
-
-/* 回覆高亮閃爍動畫 */
 @keyframes flash-highlight {
-  0% { transform: scale(1); background-color: rgba(56, 189, 248, 0.4); }
-  50% { transform: scale(1.02); background-color: rgba(56, 189, 248, 0.2); }
-  100% { transform: scale(1); background-color: transparent; }
-}
-.highlight-flash {
-  animation: flash-highlight 1s ease-in-out 2;
-  border-radius: 8px;
-}
-/* 封鎖警告 */
-.block-warning-banner {
-  background: #7f1d1d; color: #fca5a5; padding: 10px; text-align: center; font-weight: bold;
+  0% { background-color: rgba(56, 189, 248, 0.6); transform: scale(1); }
+  50% { background-color: rgba(56, 189, 248, 0.3); transform: scale(1.02); }
+  100% { background-color: transparent; transform: scale(1); }
 }
 
-/* Emoji 反應膠囊 */
-.reactions-pill {
-  display: flex; gap: 4px; background: rgba(0,0,0,0.3); 
-  padding: 2px 8px; border-radius: 12px; font-size: 12px;
-  position: absolute; bottom: -12px; right: 5px; cursor: pointer;
-}
-
-/* Emoji 彈出選單 */
-.emoji-trigger { position: relative; cursor: pointer; }
-.emoji-popover {
-  display: none; position: absolute; bottom: 100%; left: 0;
-  background: #1e293b; border: 1px solid #38bdf8; border-radius: 20px; padding: 5px; z-index: 10;
-}
-.emoji-trigger:hover .emoji-popover { display: flex; gap: 5px; }
-.emoji-popover button { background: none; border: none; font-size: 16px; cursor: pointer; }
-
-/* 回覆高亮動畫 */
-@keyframes flash-highlight {
-  0% { background-color: rgba(56, 189, 248, 0.5); }
-  100% { background-color: transparent; }
-}
-.highlight-flash { animation: flash-highlight 1.5s ease-in-out; }
-
-/* Emoji 彈出選單中的按鈕基礎樣式（確保有 Padding 和圓角） */
-.emoji-popover button {
-  background: none;
-  border: none;
-  font-size: 18px;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 8px;
-  transition: background 0.2s;
-}
-
-.emoji-popover button:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-/* 關鍵：已經發過（選中）的表情底色改變 */
-.emoji-popover button.active-reaction-btn {
-  background-color: #38bdf8; /* 你的主題藍色 */
-  /* 或者使用半透明色：background-color: rgba(56, 189, 248, 0.3); */
-}
-
-/* 如果選中了，滑鼠指上去可以稍微變深 */
-.emoji-popover button.active-reaction-btn:hover {
-  background-color: #0ea5e9;
-}
+.highlight-flash { animation: flash-highlight 1.5s ease-in-out; border-radius: 8px; }
