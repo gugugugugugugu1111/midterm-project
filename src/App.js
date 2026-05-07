@@ -6,8 +6,8 @@ import {
   onAuthStateChanged, 
   signInWithPopup, 
   signOut,
-  signInWithEmailAndPassword,    // 補上這一行
-  createUserWithEmailAndPassword // 補上這一行
+  signInWithEmailAndPassword,    
+  createUserWithEmailAndPassword 
 } from 'firebase/auth';
 import { 
   collection, 
@@ -30,19 +30,20 @@ import {
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [rooms, setRooms] = useState([]); // 房間列表
-  const [currentRoom, setCurrentRoom] = useState(null); // 目前選中的房間
+  const [rooms, setRooms] = useState([]);  
+  const [currentRoom, setCurrentRoom] = useState(null); 
   const [messages, setMessages] = useState([]); 
   const [newMessage, setNewMessage] = useState("");
   const messagesEndRef = useRef(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [tempProfile, setTempProfile] = useState({}); // 用來存放編輯中的資料
+  const [tempProfile, setTempProfile] = useState({}); 
   const [searchKeyword, setSearchKeyword] = useState("");
-  const [replyingTo, setReplyingTo] = useState(null); // 紀錄正在回覆哪則訊息
-  const [blockedUsers, setBlockedUsers] = useState([]); // 紀錄你封鎖的人的 UID
+  const [replyingTo, setReplyingTo] = useState(null); 
+  const [blockedUsers, setBlockedUsers] = useState([]); 
   const [profile, setProfile] = useState(null);
   const messageRefs = useRef({});
   const [usersBlockingMe, setUsersBlockingMe] = useState([]);
+  const [roomMemberProfiles, setRoomMemberProfiles] = useState({});
   const [showRoomInfoModal, setShowRoomInfoModal] = useState(false);
   const [editRoomName, setEditRoomName] = useState("");
   const [roomMembersData, setRoomMembersData] = useState([]);
@@ -61,8 +62,7 @@ function App() {
         if (Notification.permission !== "granted") {
           Notification.requestPermission();
         }
-        // 先檢查這份檔案是否已存在，避免每次登入都重寫
-        const userSnap = await getDoc(userRef); // 記得頂部要 import getDoc
+        const userSnap = await getDoc(userRef); 
         
         if (!userSnap.exists()) {
           const defaultUsername = currentUser.email.split('@')[0];
@@ -100,13 +100,12 @@ function App() {
     const targetElement = messageRefs.current[msgId];
     if (targetElement) {
       targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      targetElement.classList.add('highlight-flash'); // 加入 CSS 動畫
+      targetElement.classList.add('highlight-flash');  
       setTimeout(() => targetElement.classList.remove('highlight-flash'), 2000);
     } else {
       alert("找不到原始訊息（可能已被回收）");
     }
   };
-  // 監聽自己的個人檔案
   useEffect(() => {
     if (user) {
       const unsubscribe = onSnapshot(doc(db, "users", user.uid), (doc) => {
@@ -116,7 +115,6 @@ function App() {
     }
   }, [user]);
 
-// 打開編輯視窗並帶入現有資料
   const openProfile = () => {
     setTempProfile({
       username: profile?.username || "",
@@ -128,12 +126,10 @@ function App() {
     setShowProfileModal(true);
   };
 
-// 儲存到 Firestore
   const saveProfile = async () => {
     try {
       const newId = tempProfile.inviteId;
 
-      // 如果 ID 有變動，才執行重複檢查
       if (newId !== profile?.inviteId) {
         if (!newId) return alert("ID 不能為空！");
         
@@ -146,13 +142,12 @@ function App() {
         }
       }
 
-      // 執行更新
       await updateDoc(doc(db, "users", user.uid), {
         username: tempProfile.username,
         phone: tempProfile.phone,
         address: tempProfile.address,
         photoURL: tempProfile.photoURL,
-        inviteId: newId, // 加入這一行
+        inviteId: newId, 
       });
 
       setShowProfileModal(false);
@@ -162,28 +157,22 @@ function App() {
     }
   };
 
-  const handleImageUpload = (e) => {
+  const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // 限制檔案大小 (Base64 會膨脹體積，建議限制在 200KB 以內)
-    if (file.size > 200 * 1024) {
-      alert("檔案太大，請上傳 200KB 以下的圖片以符合資料庫限制。");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      // 這就是圖片的 Base64 字串
-      const base64String = reader.result;
-      setTempProfile({ ...tempProfile, photoURL: base64String });
+    try {
+      const compressedBase64 = await compressImage(file, 400, 400, 0.7);
+      
+      setTempProfile({ ...tempProfile, photoURL: compressedBase64 });
       alert("圖片處理完成！按下儲存即可更新。");
-    };
-    reader.readAsDataURL(file);
+    } catch (error) {
+      console.error(error);
+      alert("圖片處理失敗");
+    }
   };
 
 
-  // A. 回收訊息 (Unsend)
   const unsendMessage = async (msgId) => {
     if (!window.confirm("確定要回收這條訊息嗎？")) return;
     try {
@@ -191,7 +180,6 @@ function App() {
     } catch (err) { alert("回收失敗" ); }
   };
 
-  // B. 編輯訊息 (Edit)
   const editMessage = async (msgId, oldText) => {
     const newText = prompt("編輯訊息：", oldText);
     if (!newText || newText === oldText) return;
@@ -203,34 +191,38 @@ function App() {
     } catch (err) { alert("編輯失敗" ); }
   };
 
-  // C. 處理發送圖片 (Send Image)
-  const handleSendImage = (e) => {
+
+  const handleSendImage = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    
-    if (file.size > 200 * 1024) {
-      alert("圖片太大了，請上傳 200KB 以下的圖片。");
-      return;
-    }
 
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      try {
-        await addDoc(collection(db, "rooms", currentRoom.id, "messages"), {
-          text: "", 
-          image: reader.result, // Base64 字串
-          createdAt: serverTimestamp(),
-          uid: user.uid,
-          email: user.email,
-          username: profile?.username || user.email,
-          photoURL: profile?.photoURL || ""
-        });
-      } catch (err) { alert("圖片傳送失敗"); }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const compressedBase64 = await compressImage(file, 1024, 1024, 0.7);
+
+      const sizeInBytes = (compressedBase64.length * 3) / 4;
+      if (sizeInBytes > 900 * 1024) { 
+        alert("圖片即使壓縮後依然太大，請選擇其他圖片。");
+        return;
+      }
+
+      await addDoc(collection(db, "rooms", currentRoom.id, "messages"), {
+        text: "", 
+        image: compressedBase64,  
+        createdAt: serverTimestamp(),
+        uid: user.uid,
+        email: user.email,
+        username: profile?.username || user.email,
+        photoURL: profile?.photoURL || "",
+        senderBlockedUsers: blockedUsers, 
+        replyTo: null,
+        reactions: []
+      });
+    } catch (err) { 
+      console.error(err);
+      alert("圖片處理或傳送失敗"); 
+    }
   };
 
-  // 2. 監聽房間列表 (載入該使用者參與的房間)
   useEffect(() => {
     if (user) {
       const q = query(
@@ -240,7 +232,6 @@ function App() {
       const unsubscribe = onSnapshot(q, (snapshot) => {
         const fetchedRooms = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setRooms(fetchedRooms);
-        // 如果還沒選房間，預設選第一個
         if (fetchedRooms.length > 0 && !currentRoom) {
           setCurrentRoom(fetchedRooms[0]);
         }
@@ -251,7 +242,7 @@ function App() {
 
   useEffect(() => {
     if (user && currentRoom) {
-      let isInitialLoad = true; // 用來標記是否為「第一次載入歷史訊息」
+      let isInitialLoad = true; 
 
       const q = query(
         collection(db, "rooms", currentRoom.id, "messages"),
@@ -259,18 +250,14 @@ function App() {
       );
       
       const unsubscribe = onSnapshot(q, (snapshot) => {
-        // 1. 先處理畫面上要顯示的所有訊息
         const newMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setMessages(newMessages);
 
-        // 2. 處理通知邏輯：只有在「非第一次載入」且「頁面隱藏」時才觸發
         if (!isInitialLoad) {
           snapshot.docChanges().forEach((change) => {
-            // 只處理「新增加 (added)」的訊息
             if (change.type === "added") {
               const msgData = change.doc.data();
               
-              // 條件：不是自己發的 + 權限允許 + 視窗隱藏 (document.hidden)
               if (msgData.uid !== user.uid && Notification.permission === "granted" && document.hidden) {
                 new Notification(`[#${currentRoom.name}] 新訊息`, {
                   body: `${msgData.email}: ${msgData.text}`,
@@ -281,7 +268,6 @@ function App() {
           });
         }
 
-        // 第一次監聽完成後，將標記設為 false，之後進來的訊息都會觸發通知
         isInitialLoad = false;
       });
       
@@ -291,45 +277,85 @@ function App() {
     }
   }, [user, currentRoom]);
 
-  // 自動捲動到底部
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-// 在其他 useEffect 附近新增這個，用來偵測對方是否封鎖我
 
-// 監聽房間內所有成員的實時封鎖名單
+
   useEffect(() => {
     if (user && currentRoom && currentRoom.members) {
-      // 針對房間內的所有人建立監聽
       const unsubs = currentRoom.members.map(memberId => {
-        if (memberId === user.uid) return () => {}; // 不用監聽自己
-        
         return onSnapshot(doc(db, "users", memberId), (docSnap) => {
           if (docSnap.exists()) {
-            const peerBlockedList = docSnap.data().blockedUsers || [];
-            if (peerBlockedList.includes(user.uid)) {
-              // 他封鎖了我：加入名單
-              setUsersBlockingMe(prev => prev.includes(memberId) ? prev : [...prev, memberId]);
-            } else {
-              // 他沒封鎖我 (或解除封鎖)：從名單移除
-              setUsersBlockingMe(prev => prev.filter(id => id !== memberId));
+            const data = docSnap.data();
+            
+            setRoomMemberProfiles(prev => ({
+              ...prev,
+              [memberId]: data
+            }));
+
+            if (memberId !== user.uid) {
+              const peerBlockedList = data.blockedUsers || [];
+              if (peerBlockedList.includes(user.uid)) {
+                setUsersBlockingMe(prev => prev.includes(memberId) ? prev : [...prev, memberId]);
+              } else {
+                setUsersBlockingMe(prev => prev.filter(id => id !== memberId));
+              }
             }
           }
         });
       });
 
-      // 離開房間或切換房間時，清除所有監聽器並重置狀態
       return () => {
         unsubs.forEach(unsub => unsub());
         setUsersBlockingMe([]);
+        setRoomMemberProfiles({}); 
       };
     } else {
       setUsersBlockingMe([]);
+      setRoomMemberProfiles({});
     }
   }, [currentRoom, user]);
 
-  // 建立新房間邏輯 (Invite 邏輯預備)
-  // 在 App.js 中找到 createNewRoom 函式，建議修改如下：
+
+  const compressImage = (file, maxWidth, maxHeight, quality) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+          resolve(compressedBase64);
+        };
+        img.onerror = (error) => reject(error);
+      };
+      reader.onerror = (error) => reject(error);
+    });
+  };
   const createNewRoom = async () => {
     const roomName = prompt("請輸入聊天室名稱：");
     if (!roomName) return;
@@ -349,12 +375,10 @@ function App() {
       const targetUid = targetData.uid;
       const targetBlockedList = targetData.blockedUsers || []; 
 
-      // --- 關鍵雙向檢查 ---
-      // 1. 我封鎖了他
+
       if (blockedUsers.includes(targetUid)) {
         return alert("你已封鎖此使用者，無法建立聊天室。");
       }
-      // 2. 他封鎖了我 (基於隱私，我們告知「找不到」或「無法建立」)
       if (targetBlockedList.includes(user.uid)) {
         return alert("找不到該使用者。"); 
       }
@@ -370,9 +394,7 @@ function App() {
   };
 
   const deleteRoom = async (e, roomId, roomCreator) => {
-    e.stopPropagation(); // 防止觸發切換房間的點擊事件
-    
-    // 權限檢查：只有建立者能刪除
+    e.stopPropagation(); 
     if (roomCreator !== user.uid) {
       alert("只有房間建立者可以刪除房間！");
       return;
@@ -381,10 +403,7 @@ function App() {
     if (!window.confirm("確定要刪除這個聊天室嗎？所有訊息將會消失。")) return;
 
     try {
-      // 直接呼叫頂部 import 進來的 deleteDoc
       await deleteDoc(doc(db, "rooms", roomId));
-      
-      // 如果刪除的是當前房間，重設選中狀態
       if (currentRoom?.id === roomId) {
         setCurrentRoom(null);
       }
@@ -394,7 +413,6 @@ function App() {
       alert("刪除失敗" );
     }
   };
-  // 邀請成員邏輯
   const inviteUserByInviteId = async () => {
     if (!currentRoom) return alert("請先選擇一個房間");
     
@@ -405,7 +423,6 @@ function App() {
       return;
     }
     try {
-      // 1. 去 users 集合搜尋誰的 inviteId 等於輸入的值
       const q = query(collection(db, "users"), where("inviteId", "==", targetId));
       const querySnapshot = await getDocs(q);
 
@@ -413,10 +430,8 @@ function App() {
         return alert("找不到該使用者！");
       }
 
-      // 2. 取得對方的真實 UID
       const targetUid = querySnapshot.docs[0].data().uid;
 
-      // 3. 加入房間成員
       const roomRef = doc(db, "rooms", currentRoom.id);
       await updateDoc(roomRef, {
         members: arrayUnion(targetUid)
@@ -436,7 +451,6 @@ function App() {
     
     signInWithEmailAndPassword(auth, email, password)
       .catch((error) => {
-        // 這裡處理各種錯誤狀況
         if (error.code === 'auth/user-not-found') {
           alert('此帳號尚未註冊，請先註冊。');
         } else if (error.code === 'auth/wrong-password') {
@@ -468,8 +482,7 @@ function App() {
   });
 
   const formatTime = (timestamp) => {
-    if (!timestamp) return ""; // 剛發送時可能有短暫的 null
-    // 確保有 toDate 方法 (Firebase Timestamp 特有)
+    if (!timestamp) return "";  
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
     return date.toLocaleTimeString('zh-TW', { 
       hour: '2-digit', 
@@ -486,7 +499,6 @@ function App() {
     const replyData = replyingTo; 
     if (currentRoom.members?.length === 2) {
         const otherId = currentRoom.members.find(m => m !== user.uid);
-        // 改用 usersBlockingMe.includes(otherId)
         if (blockedUsers.includes(otherId) || usersBlockingMe.includes(otherId)) {
           alert("封鎖狀態下無法傳送訊息。");
           return;
@@ -509,7 +521,7 @@ function App() {
           text: replyData.text,
           username: replyData.username
         } : null,
-        reactions: [] // 預留 Emoji 反應空間
+        reactions: []  
       });
     } catch (err) { alert(err.message); }
   };
@@ -519,14 +531,11 @@ function App() {
     const msgSnap = await getDoc(msgRef);
     const currentReactions = msgSnap.data().reactions || [];
 
-    // 檢查是否已經點過這個 emoji
     const existingIndex = currentReactions.findIndex(r => r.uid === user.uid && r.emoji === emoji);
 
     if (existingIndex > -1) {
-      // 如果點過了，就移除 (即「回收」功能)
       currentReactions.splice(existingIndex, 1);
     } else {
-      // 沒點過就加入
       currentReactions.push({ uid: user.uid, emoji: emoji });
     }
 
@@ -538,7 +547,6 @@ function App() {
     setShowRoomInfoModal(true);
 
     try {
-      // 根據 currentRoom.members (UID陣列) 去 users 集合抓取詳細資料
       const memberDocs = await Promise.all(
         currentRoom.members.map(uid => getDoc(doc(db, "users", uid)))
       );
@@ -560,7 +568,6 @@ function App() {
         name: editRoomName.trim()
       });
       alert("群組名稱已更新！");
-      // 更新後可以選擇不關閉視窗，讓使用者能繼續看成員
     } catch (err) {
       alert("更新失敗：" + err.message);
     }
@@ -571,7 +578,6 @@ function App() {
     <div className="App">
       {user ? (
         <div className="main-layout">
-          {/* 左側房間選單 */}
           <aside className="sidebar">
             <div className="sidebar-header">
               <h4>聊天室列表</h4>
@@ -587,7 +593,6 @@ function App() {
                   >
                     <span># {room.name}</span>
                     
-                    {/* 如果是建立者，顯示刪除按鈕 */}
                     {room.creator === user.uid && (
                       <button 
                         onClick={(e) => deleteRoom(e, room.id, room.creator)}
@@ -601,23 +606,33 @@ function App() {
               </div>
             <div className="sidebar-footer">
               <div className="user-profile-small" onClick={openProfile} style={{ cursor: 'pointer' }}>
-                <img src={profile?.photoURL || "https://via.placeholder.com/30"} alt="avatar" className="mini-avatar" />
-                <div className="user-info-text">
-                  <div className="user-name-display">{profile?.username || user.email}</div>
-                  <div className="invite-tag">ID: {profile?.inviteId}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                  <img src={profile?.photoURL || "/donlogo.jpeg"} alt="avatar" className="mini-avatar" />
+                  <span style={{ fontSize: '12px', color: '#38bdf8', opacity: 0.9 }}>
+                    (點擊修改個人檔案)
+                  </span>
                 </div>
+                
+                <div className="user-info-text">
+                  <div className="user-name-display" style={{ fontSize: '1.2rem', color: 'white', fontWeight: '500' }}>
+                    {profile?.username || user.email}
+                  </div>
+                  <div className="invite-tag" style={{ color: '#94a3b8', fontSize: '0.9rem', marginTop: '4px' }}>
+                    ID: {profile?.inviteId}
+                  </div>
+                </div>
+                
               </div>
-              <button onClick={handleLogout} className="btn-mini">登出</button>
+              
+              <button onClick={handleLogout} className="btn-mini" style={{ marginTop: '10px' }}>登出</button>
             </div>
           </aside>
 
-          {/* 右側訊息區域 */}
           <div className="chat-container">
             <header className="chat-header">
               <div className="chat-header-content">
                 <h3>{currentRoom ? `# ${currentRoom.name}` : "請選擇房間"}</h3>
                 
-                {/* 搜尋框 */}
                 <input 
                   type="text" 
                   placeholder="搜尋訊息..." 
@@ -626,7 +641,6 @@ function App() {
                   className="search-input"
                 />
                 
-                {/* 右側按鈕組 */}
                 {currentRoom && (
                   <div className="header-actions">
                     <button onClick={inviteUserByInviteId} className="btn-header btn-invite">+ 邀請</button>
@@ -637,7 +651,6 @@ function App() {
             </header>
 
             <main className="chat-messages">
-              {/* 封鎖警告橫幅 (加分項要求的 UI) */}
               
               {currentRoom?.members?.length === 2 && (() => {
                   const otherId = currentRoom.members.find(m => m !== user.uid);
@@ -652,17 +665,9 @@ function App() {
               {messages
                 .filter(msg => {
                     const matchesSearch = msg.text.toLowerCase().includes(searchKeyword.toLowerCase());
-
-                    // 1. 我封鎖了他 (iBlockHim)
                     const iBlockHim = blockedUsers.includes(msg.uid);
-                    
-                    // 2. 他封鎖了我 (不分群組或私聊，直接看實時名單)
                     const heBlocksMeLive = usersBlockingMe.includes(msg.uid);
-                    
-                    // 3. 快照保險 (適用於已經離開房間的人)
                     const heBlocksMeSnapshot = msg.senderBlockedUsers?.includes(user.uid);
-
-                    // 只要任何一個封鎖條件成立，訊息就徹底消失！
                     return matchesSearch && !iBlockHim && !heBlocksMeLive && !heBlocksMeSnapshot;
                 })
                 .map((msg) => (
@@ -673,15 +678,15 @@ function App() {
                   >
                     {msg.uid !== user.uid && (
                       <img 
-                        src={msg.photoURL || "/donlogo.jpeg"} 
+                        src={roomMemberProfiles[msg.uid]?.photoURL || msg.photoURL || "/donlogo.jpeg"} 
                         className="chat-avatar" 
-                        title={msg.username}
+                        title={roomMemberProfiles[msg.uid]?.username || msg.username}
                       />
                     )}
                     
                     <div className="msg-content-wrapper">
                       <div className="msg-username">
-                        <span>{msg.username || msg.email}</span>
+                        <span>{roomMemberProfiles[msg.uid]?.username || msg.username || msg.email}</span>
                         <span className="msg-time">{formatTime(msg.createdAt)}</span>
                       </div>
                       
@@ -696,7 +701,6 @@ function App() {
                           {msg.image && <img src={msg.image} className="sent-image-standalone" />}
                           {msg.text && <div className="msg-text">{msg.text}</div>}
                           
-                          {/* Emoji 反應顯示 (符合截圖：顯示多人、可回收) */}
                           {msg.reactions && msg.reactions.length > 0 && (
                             <div className="reactions-pill">
                               {msg.reactions.map((r, i) => (
@@ -709,20 +713,17 @@ function App() {
                         </div>
 
                         <div className="msg-ops-outside">
-                          {/* Emoji 快速選單 */}
                           
                           <div className="emoji-trigger">
                             <span>❤️</span>
                             <div className="emoji-popover">
                               {['❤️', '👍', '😂', '😮'].map(e => {
-                                // 判斷目前這個 emoji 是否已經被我點過了
                                 const isReactedByMe = msg.reactions?.some(r => r.uid === user.uid && r.emoji === e);
                                 
                                 return (
                                   <button 
                                     key={e} 
                                     onClick={() => handleReaction(msg.id, e)}
-                                    /* 動態加入類別 */
                                     className={isReactedByMe ? "active-reaction-btn" : ""}
                                   >
                                     {e}
@@ -766,7 +767,6 @@ function App() {
 
             
             <form className="chat-input-area" onSubmit={sendMessage}>
-              {/* 隱藏的檔案選取器 */}
               <input 
                 type="file" 
                 id="image-upload" 
@@ -788,7 +788,6 @@ function App() {
           </div>
         </div>
       ) : (
-        /* ... 登入介面保持不變 ... */
          <div className="auth-card">
           <h2>會員系統</h2>
           <div className="input-group">
@@ -829,7 +828,7 @@ function App() {
               
               <label>使用者名稱 (Username)</label>
               <input value={tempProfile.username} onChange={e => setTempProfile({...tempProfile, username: e.target.value})} />
-               {/* 新增專屬 ID 欄位 */}
+
               <label>ID (用於邀請，不可重複)</label>
               <input 
                 value={tempProfile.inviteId} 
@@ -858,7 +857,6 @@ function App() {
             <h2>群組設定</h2>
             <div className="profile-fields">
               
-              {/* 1. 修改群組名稱區塊 */}
               <label>修改群組名稱</label>
               <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
                 <input 
@@ -869,7 +867,6 @@ function App() {
                 <button className="btn-save" onClick={saveRoomName}>儲存</button>
               </div>
 
-              {/* 2. 成員名單區塊 */}
               <label style={{ marginTop: '25px', borderBottom: '1px solid #334155', paddingBottom: '5px' }}>
                 群組成員名單 ({roomMembersData.length} 人)
               </label>
