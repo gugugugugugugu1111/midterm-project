@@ -213,6 +213,34 @@ body {
 }
 .reply-preview-bar button { background: none; border: none; color: white; cursor: pointer; }
 
+/* 名字與時間的容器 */
+.msg-username { 
+  font-size: 0.75rem; 
+  color: #94a3b8; 
+  margin-bottom: 4px; 
+  font-weight: 500; 
+  display: flex;
+  align-items: baseline; /* 讓名字和時間的底部對齊 */
+}
+
+/* 如果是自己發的訊息，名字靠右，時間靠左 */
+.sent .msg-username {
+  flex-direction: row-reverse;
+}
+
+/* 時間的專屬樣式 */
+.msg-time {
+  font-size: 0.65rem;
+  color: #64748b; /* 比名字更暗一點的灰色 */
+  margin-left: 8px; /* 別人發的訊息，時間在右邊 */
+  font-weight: normal;
+}
+
+/* 自己發的訊息，時間在左邊，所以改用 margin-right */
+.sent .msg-time {
+  margin-left: 0;
+  margin-right: 8px;
+}
 /* =========================================
    7. 懸浮操作按鈕與 Emoji 選單
    ========================================= */

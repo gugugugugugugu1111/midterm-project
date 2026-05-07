@@ -26,8 +26,6 @@ import {
   arrayUnion   
 } from "firebase/firestore";
 
-import { storage } from './firebase';
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -469,6 +467,17 @@ function App() {
     setCurrentRoom(null);
   });
 
+  const formatTime = (timestamp) => {
+    if (!timestamp) return ""; // 剛發送時可能有短暫的 null
+    // 確保有 toDate 方法 (Firebase Timestamp 特有)
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleTimeString('zh-TW', { 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      hour12: true 
+    });
+  };
+
   const sendMessage = async (e) => {
     e.preventDefault();
     if (newMessage.trim() === "" || !currentRoom) return;
@@ -671,7 +680,10 @@ function App() {
                     )}
                     
                     <div className="msg-content-wrapper">
-                      <div className="msg-username">{msg.username || msg.email}</div>
+                      <div className="msg-username">
+                        <span>{msg.username || msg.email}</span>
+                        <span className="msg-time">{formatTime(msg.createdAt)}</span>
+                      </div>
                       
                       {msg.replyTo && (
                         <div className="reply-quote" onClick={() => scrollToMessage(msg.replyTo.id)}>
